@@ -1,0 +1,27 @@
+from flask import Flask, jsonify, request
+from scraper import MySiteScraper
+
+app = Flask(__name__)
+
+
+@app.route('/api/categories')
+def categories():
+    return jsonify(MySiteScraper.get_categories())
+
+
+@app.route('/api/videos')
+def videos():
+    category_url = request.args.get('url')
+    page = request.args.get('page', 1, type=int)
+    return jsonify(MySiteScraper.get_videos(category_url, page))
+
+
+@app.route('/api/stream')
+def stream():
+    video_url = request.args.get('url')
+    stream_url = MySiteScraper.get_video_stream(video_url)
+    return jsonify({'stream_url': stream_url})
+
+
+if __name__ == '__main__':
+    app.run(debug=True)

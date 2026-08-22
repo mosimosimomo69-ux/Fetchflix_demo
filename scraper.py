@@ -1,0 +1,36 @@
+from bs4 import BeautifulSoup
+from cf_client import fetch, is_cloudflare_blocked
+
+
+class MySiteScraper:
+    BASE_URL = "https://net77.cc/home"
+
+    @classmethod
+    def get_categories(cls):
+        resp = fetch(f"{cls.BASE_URL}/categories")
+        if is_cloudflare_blocked(resp):
+            raise Exception("Cloudflare blocked — try VPN or different IP")
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        return [{'name': cat.text.strip(), 'url': cat['href']}
+                for cat in soup.select('.category-link')]
+
+    @classmethod
+    def get_videos(cls, category_url, page=1):
+        url = f"{category_url}?page={page}" if '?' not in category_url else f"{category_url}&page={page}"
+        resp = fetch(url)
+        if is_cloudflare_blocked(resp):
+            raise Exception("Cloudflare blocked")
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        return [{'title': v.select_one('.title').text.strip(),
+                 'url': v.select_one('a')['href'],
+                 'cover': v.select_one('img')['src']}
+                for v in soup.select('.video-card')]
+
+    @classmethod
+    def get_video_stream(cls, video_url):
+        resp = fetch(video_url)
+        if is_cloudflare_blocked(resp):
+            raise Exception("Cloudflare blocked")
+        import re
+        match = re.search(r'(https?://[^"\']+\.m3u8[^"\']*)', resp.text)
+        return match.group(1) if match else None

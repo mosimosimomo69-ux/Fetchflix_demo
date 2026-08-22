@@ -1,0 +1,57 @@
+import threading
+
+try:
+    from curl_cffi import requests as cffi_requests
+    _use_cffi = True
+except ImportError:
+    _use_cffi = False
+
+try:
+    import cloudscraper
+except ImportError:
+    cloudscraper = None
+
+_thread_local = threading.local()
+
+
+def get_session():
+    """Returns a session that bypasses Cloudflare. curl_cffi preferred, cloudscraper fallback."""
+    session = getattr(_thread_local, 'session', None)
+    if session is not None:
+        return session
+
+    if _use_cffi:
+        session = cffi_requests.Session(impersonate='chrome')
+    elif cloudscraper:
+        session = cloudscraper.create_scraper(
+            browser={'browser': 'firefox', 'platform': 'windows'}, delay=10
+        )
+    else:
+        raise ImportError("Install curl_cffi or cloudscraper for Cloudflare bypass")
+
+    _thread_local.session = session
+    return session
+
+
+def fetch(url, headers=None, timeout=20, use_proxy=False, proxy_url=None):
+    """Fetch a URL bypassing Cloudflare. Returns response object."""
+    session = get_session()
+    kwargs = {'headers': headers or {}, 'timeout': timeout}
+    if use_proxy and proxy_url:
+        kwargs['proxies'] = {'http': proxy_url, 'https': proxy_url}
+
+    if _use_cffi:
+        kwargs['headers'] = {k: v for k, v in kwargs['headers'].items()
+                            if k.lower() != 'user-agent'}
+
+    resp = session.get(url, **kwargs)
+    return resp
+
+
+def is_cloudflare_blocked(resp):
+    """Check if a response is a Cloudflare interstitial."""
+    if resp.status_code in (403, 429, 503):
+        return True
+    body = resp.text[:3000].lower()
+    return ('just a moment' in body or 'cf_chl_' in body
+            or 'cf-browser-verification' in body or 'attention required' in body)
