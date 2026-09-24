@@ -30,7 +30,7 @@ export function VideoPlayerView({
   const { addToHistory } = useAuth();
 
   // State: selected server (default: vidlink) & iframe refresh counter
-  const [selectedServer, setSelectedServer] = useState<string>("vidlink");
+  const [selectedServer, setSelectedServer] = useState<string>("vidking");
   const [isServerMenuOpen, setIsServerMenuOpen] = useState<boolean>(false);
   const [showOverlay, setShowOverlay] = useState<boolean>(true);
   const [refreshKey, setRefreshKey] = useState<number>(0);
@@ -154,50 +154,106 @@ export function VideoPlayerView({
     const episode = initialEpisode;
 
     switch (serverId) {
-      case "cinesrc":
+      case "vidking":
         return type === "tv"
-          ? `https://cinesrc.st/embed/tv/${id}?s=${season}&e=${episode}`
-          : `https://cinesrc.st/embed/movie/${id}`;
-      case "nexus":
+          ? `https://player.videasy.to/tv/${id}/${season}/${episode}`
+          : `https://player.videasy.to/movie/${id}`;
+      case "peachify":
         return type === "tv"
-          ? `https://nxsha.space/embed/tv/${id}/${season}/${episode}?lang=en&autoplay=true&sub=en`
-          : `https://nxsha.space/embed/movie/${id}?lang=en&autoplay=true&sub=en`;
-      case "aura":
+          ? `https://peachify.pro/embed/tv/${id}/${season}/${episode}`
+          : `https://peachify.pro/embed/movie/${id}`;
+      case "videasy":
         return type === "tv"
-          ? `https://vidgod.site/tv/${id}/${season}/${episode}?autoPlay=true`
-          : `https://vidgod.site/movie/${id}?autoPlay=true`;
-      case "filix":
+          ? `https://player.videasy.to/tv/${id}/${season}/${episode}`
+          : `https://player.videasy.to/movie/${id}`;
+      case "vidnest":
+        return type === "tv"
+          ? `https://vidnest.fun/tv/${id}/${season}/${episode}`
+          : `https://vidnest.fun/movie/${id}`;
+      case "smashy":
+        return type === "tv"
+          ? `https://embed.smashystream.com/playere.php?tmdb=${id}&season=${season}&episode=${episode}`
+          : `https://embed.smashystream.com/playere.php?tmdb=${id}`;
+      case "vidup":
         return type === "tv"
           ? `https://nhdapi.com/tv/${id}/${season}/${episode}?autoPlay=true`
           : `https://nhdapi.com/movie/${id}?autoPlay=true`;
+      case "vidfast":
+        return type === "tv"
+          ? `https://vidfast.net/embed/tv/${id}/${season}/${episode}`
+          : `https://vidfast.net/embed/movie/${id}`;
       case "vidlink":
         return type === "tv"
           ? `https://vidlink.pro/tv/${id}/${season}/${episode}?primaryColor=e50914&secondaryColor=e50914&autoplay=true`
           : `https://vidlink.pro/movie/${id}?primaryColor=e50914&secondaryColor=e50914&autoplay=true`;
-      case "vidking":
-        return type === "tv"
-          ? `https://www.vidking.net/embed/tv/${id}/${season}/${episode}?color=e50914&autoPlay=true`
-          : `https://www.vidking.net/embed/movie/${id}?color=e50914&autoPlay=true`;
-      case "vidsrcto":
+      case "vidmov":
         return type === "tv"
           ? `https://vidsrc.to/embed/tv/${id}/${season}/${episode}`
           : `https://vidsrc.to/embed/movie/${id}`;
-      case "vidsrcme":
-        return type === "tv"
-          ? `https://vidsrc.me/embed/tv?tmdb=${id}&season=${season}&episode=${episode}`
-          : `https://vidsrc.me/embed/movie?tmdb=${id}`;
-      case "vidsrcpm":
+      case "vidfyi":
         return type === "tv"
           ? `https://vidsrc.pm/embed/tv/${id}/${season}/${episode}`
           : `https://vidsrc.pm/embed/movie/${id}`;
-      case "2embed":
+      case "vidrock":
+        return type === "tv"
+          ? `https://vidrock.to/tv/${id}/${season}/${episode}`
+          : `https://vidrock.to/movie/${id}`;
+      case "movies111":
+        return type === "tv"
+          ? `https://player.vidlove.cc/embed/tv/${id}/${season}/${episode}`
+          : `https://player.vidlove.cc/embed/movie/${id}`;
+      case "nontongo":
+        return type === "tv"
+          ? `https://www.nontongo.win/embed/tv/${id}/${season}/${episode}`
+          : `https://www.nontongo.win/embed/movie/${id}`;
+      case "vidsrc":
+        return type === "tv"
+          ? `https://vidsrc.to/embed/tv/${id}/${season}/${episode}`
+          : `https://vidsrc.to/embed/movie/${id}`;
+      case "hyperlink":
+        return type === "tv"
+          ? `https://nxsha.space/embed/tv/${id}/${season}/${episode}?lang=en&autoplay=true&sub=en`
+          : `https://nxsha.space/embed/movie/${id}?lang=en&autoplay=true&sub=en`;
+      case "nexastream":
+        return type === "tv"
+          ? `https://nxsha.space/embed/tv/${id}/${season}/${episode}?lang=en&autoplay=true&sub=en`
+          : `https://nxsha.space/embed/movie/${id}?lang=en&autoplay=true&sub=en`;
+      case "ultrabox":
+        return type === "tv"
+          ? `https://vidsrc.pm/embed/tv/${id}/${season}/${episode}`
+          : `https://vidsrc.pm/embed/movie/${id}`;
+      case "cloudbox":
+        return type === "tv"
+          ? `https://nhdapi.com/tv/${id}/${season}/${episode}?autoPlay=true`
+          : `https://nhdapi.com/movie/${id}?autoPlay=true`;
+      case "upcloud":
+        return type === "tv"
+          ? `https://vidsrc.to/embed/tv/${id}/${season}/${episode}`
+          : `https://vidsrc.to/embed/movie/${id}`;
+      case "streamvault":
+        return type === "tv"
+          ? `https://peachify.pro/embed/tv/${id}/${season}/${episode}`
+          : `https://peachify.pro/embed/movie/${id}`;
+      case "mediahub":
+        return type === "tv"
+          ? `https://player.videasy.to/tv/${id}/${season}/${episode}`
+          : `https://player.videasy.to/movie/${id}`;
+      case "cloudplay":
+        return type === "tv"
+          ? `https://vidnest.fun/tv/${id}/${season}/${episode}`
+          : `https://vidnest.fun/movie/${id}`;
+      case "streamboxhd":
+        return type === "tv"
+          ? `https://vidrock.to/tv/${id}/${season}/${episode}`
+          : `https://vidrock.to/movie/${id}`;
+      case "movievault":
         return type === "tv"
           ? `https://www.2embed.cc/embedtv/${id}&s=${season}&e=${episode}`
           : `https://www.2embed.cc/embed/${id}`;
       default:
         return type === "tv"
-          ? `https://vidlink.pro/tv/${id}/${season}/${episode}?primaryColor=e50914&secondaryColor=e50914&autoplay=true`
-          : `https://vidlink.pro/movie/${id}?primaryColor=e50914&secondaryColor=e50914&autoplay=true`;
+          ? `https://player.videasy.to/tv/${id}/${season}/${episode}`
+          : `https://player.videasy.to/movie/${id}`;
     }
   };
 
@@ -217,7 +273,7 @@ export function VideoPlayerView({
         className="h-full w-full border-0 bg-black"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
         allowFullScreen
-        referrerPolicy="origin"
+        referrerPolicy="no-referrer-when-downgrade"
       />
 
       {/* 2. Top Header Controls & FetchFlix Watermark */}
@@ -230,57 +286,57 @@ export function VideoPlayerView({
         />
 
         <div className="relative px-4 py-4 sm:px-6 sm:py-5 flex items-center justify-between">
-          {/* Left: Close Button + Clean Server Dropdown (Fades out when inactive) */}
+          {/* Left: Close Button + Server Dropdown (Completely disappears when video is playing/idle) */}
           <div
-            className={`flex items-center gap-2 sm:gap-2.5 transition-opacity duration-300 ${
+            className={`flex items-center gap-2 sm:gap-2.5 transition-all duration-300 ${
               showOverlay || isServerMenuOpen
-                ? "opacity-100 pointer-events-auto"
-                : "opacity-0 pointer-events-none"
+                ? "opacity-100 pointer-events-auto translate-y-0"
+                : "opacity-0 pointer-events-none -translate-y-1.5"
             }`}
           >
-            {/* 1. Sleek Glass Close Button (Compact) */}
+            {/* 1. Sleek Liquid Glass Close Button */}
             <button
               onClick={handleBack}
               aria-label="Close player (Esc)"
               title="Close player (Esc)"
-              className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full bg-black/80 text-white/90 backdrop-blur-md transition-all hover:bg-white hover:text-black hover:scale-105 active:scale-95 shadow-xl border border-white/15 cursor-pointer"
+              className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-xl transition-all hover:bg-black/85 hover:text-white hover:scale-105 active:scale-95 shadow-xl border border-white/25 cursor-pointer"
             >
               <X className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
             </button>
 
-            {/* 2. Clean Server Dropdown (No icons in trigger or menu) */}
+            {/* 2. Server Selection Dropdown (Left, next to close button) */}
             <div className="relative">
               <button
                 onClick={() => setIsServerMenuOpen((prev) => !prev)}
                 aria-expanded={isServerMenuOpen}
                 title="Select streaming server"
-                className={`flex items-center gap-1.5 sm:gap-2 rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium backdrop-blur-md transition-all shadow-2xl border cursor-pointer ${
+                className={`flex items-center gap-1.5 sm:gap-2 rounded-full px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs sm:text-sm font-medium backdrop-blur-xl transition-all shadow-xl border cursor-pointer ${
                   isServerMenuOpen
-                    ? "bg-[#e50914] text-white border-[#e50914]"
-                    : "bg-black/80 text-white/90 hover:bg-white/15 hover:border-white/30 border-white/15"
+                    ? "bg-[#e50914]/35 text-white border-[#e50914]/70 shadow-[0_0_16px_rgba(229,9,20,0.35)]"
+                    : "bg-white/15 text-white border-white/25 hover:bg-black/85 hover:border-white/15 hover:text-white/95"
                 }`}
               >
-                <span className="font-semibold text-white truncate max-w-[100px] sm:max-w-[140px]">
+                <span className="font-semibold truncate max-w-[105px] sm:max-w-[140px]">
                   {currentServerObj.name.replace(" (Default)", "")}
                 </span>
                 <ChevronDown
-                  className={`h-3.5 w-3.5 transition-transform duration-200 text-zinc-400 ${
+                  className={`h-3.5 w-3.5 transition-transform duration-200 text-zinc-300 ${
                     isServerMenuOpen ? "rotate-180" : ""
                   }`}
                 />
               </button>
 
-              {/* Server Selection Dropdown (Zero icons) */}
+              {/* Server Selection Dropdown - Liquid Glass Style */}
               {isServerMenuOpen && (
                 <>
                   <div
                     className="fixed inset-0 z-40 bg-transparent"
                     onClick={() => setIsServerMenuOpen(false)}
                   />
-                  <div className="absolute left-0 top-full mt-2 z-50 w-72 sm:w-80 rounded-2xl bg-[#121218] border border-white/15 p-2.5 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-                    {/* Header with Title and Outlined Refresh Button (No icons) */}
-                    <div className="flex items-center justify-between px-2 py-1.5 border-b border-white/10 mb-2">
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                  <div className="absolute left-0 top-full mt-2.5 z-50 w-72 sm:w-80 rounded-2xl bg-black/45 backdrop-blur-2xl border border-white/20 pt-2.5 pb-2 pl-2.5 pr-0 shadow-[0_16px_48px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
+                    {/* Header with Title and Liquid Glass Outlined Refresh Button */}
+                    <div className="flex items-center justify-between px-1.5 py-1.5 border-b border-white/15 mb-2 mr-2.5">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-300">
                         Select Server
                       </div>
                       <button
@@ -290,13 +346,13 @@ export function VideoPlayerView({
                         }}
                         aria-label="Refresh player stream"
                         title="Reload stream (R)"
-                        className="rounded-lg border border-white/20 hover:border-white/40 bg-white/5 hover:bg-white/10 px-2.5 py-1 text-xs font-medium text-zinc-200 hover:text-white transition-all cursor-pointer active:scale-95"
+                        className="rounded-lg border border-white/20 hover:border-white/10 bg-white/15 hover:bg-black/85 px-2.5 py-1 text-xs font-medium text-white transition-all cursor-pointer active:scale-95 backdrop-blur-md shadow-sm"
                       >
                         {isRefreshing ? "Refreshing..." : "Refresh"}
                       </button>
                     </div>
 
-                    <div className="space-y-1 max-h-[60vh] overflow-y-auto">
+                    <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1 pb-1 scrollbar-thin">
                       {VIDEO_SERVERS.map((server) => {
                         const isSelected = selectedServer === server.id;
                         return (
@@ -306,34 +362,34 @@ export function VideoPlayerView({
                               setSelectedServer(server.id);
                               setIsServerMenuOpen(false);
                             }}
-                            className={`flex w-full items-start justify-between rounded-xl p-2.5 text-left transition-all cursor-pointer ${
+                            className={`flex w-full items-start justify-between rounded-xl p-2.5 text-left transition-all cursor-pointer backdrop-blur-md ${
                               isSelected
-                                ? "bg-[#e50914]/20 text-white border border-[#e50914]/40 shadow-inner"
-                                : "text-zinc-300 hover:bg-white/10 hover:text-white border border-transparent"
+                                ? "bg-[#e50914]/35 text-white border border-[#e50914]/70 shadow-[0_0_16px_rgba(229,9,20,0.35)]"
+                                : "bg-white/10 border border-white/15 text-white shadow-sm hover:bg-black/85 hover:border-white/10 hover:text-white/90"
                             }`}
                           >
                             <div className="space-y-0.5 pr-2">
                               <div className="flex items-center gap-1.5 text-xs font-semibold">
-                                <span className={isSelected ? "text-white font-bold" : "text-zinc-200"}>
+                                <span className={isSelected ? "text-white font-bold" : "text-zinc-100"}>
                                   {server.name}
                                 </span>
-                                {server.id === "vidlink" && (
-                                  <span className="rounded border border-red-500/60 bg-transparent px-1.5 py-0.5 text-[9px] font-bold text-red-400">
+                                {server.id === "vidking" && (
+                                  <span className="rounded border border-red-400/70 bg-red-500/20 px-1.5 py-0.5 text-[9px] font-bold text-red-300">
                                     MAIN
                                   </span>
                                 )}
                                 {server.is4k && (
-                                  <span className="rounded border border-amber-500/60 bg-transparent px-1.5 py-0.5 text-[9px] font-bold text-amber-400">
+                                  <span className="rounded border border-amber-400/70 bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">
                                     4K
                                   </span>
                                 )}
                                 {"isMultiAudio" in server && Boolean((server as { isMultiAudio?: boolean }).isMultiAudio) && (
-                                  <span className="rounded border border-emerald-500/60 bg-transparent px-1.5 py-0.5 text-[9px] font-bold text-emerald-400">
+                                  <span className="rounded border border-emerald-400/70 bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold text-emerald-300">
                                     MULTI-AUDIO
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[11px] text-zinc-400 leading-tight">
+                              <p className={`text-[11px] leading-tight ${isSelected ? "text-zinc-200" : "text-zinc-400"}`}>
                                 {server.desc}
                               </p>
                             </div>
@@ -352,18 +408,25 @@ export function VideoPlayerView({
             </div>
           </div>
 
-          {/* Right: FetchFlix Logo Watermark */}
-          {/* While playing: disappears to very faint watermark (opacity-20). In Fullscreen: hidden (opacity-0). On pause/hover: fully visible (opacity-90). */}
+          {/* Right: FetchFlix Logo (Partially disappears when video is playing; hover makes it and left controls reappear; click goes Home) */}
           <div
-            className={`pointer-events-none select-none transition-all duration-500 ${
+            className={`transition-all duration-500 pointer-events-auto ${
               isFullscreen
-                ? "opacity-0 scale-95"
+                ? "opacity-0 scale-95 pointer-events-none"
                 : showOverlay || isServerMenuOpen
-                ? "opacity-90 scale-100"
-                : "opacity-20 scale-100"
+                ? "opacity-100 scale-100"
+                : "opacity-25 hover:opacity-100 scale-100"
             }`}
+            onMouseEnter={() => {
+              setShowOverlay(true);
+            }}
           >
-            <div className="relative h-5 sm:h-6 w-20 sm:w-24 drop-shadow-md">
+            <button
+              onClick={() => router.push("/")}
+              aria-label="Go to Fetchflix Home"
+              title="Go to Fetchflix Home"
+              className="relative h-6 sm:h-7 w-20 sm:w-24 drop-shadow-md cursor-pointer transition-transform hover:scale-105 active:scale-95 shrink-0 flex items-center justify-end"
+            >
               <Image
                 src="/fetchflix.png"
                 alt="Fetchflix"
@@ -372,7 +435,7 @@ export function VideoPlayerView({
                 className="object-contain object-right"
                 unoptimized
               />
-            </div>
+            </button>
           </div>
         </div>
       </div>
