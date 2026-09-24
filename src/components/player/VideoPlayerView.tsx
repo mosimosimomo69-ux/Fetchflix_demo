@@ -400,19 +400,17 @@ export function VideoPlayerView({
 
     switch (serverId) {
       case "vidking":
-        return type === "tv"
-          ? `https://player.videasy.to/tv/${id}/${season}/${episode}`
-          : `https://player.videasy.to/movie/${id}`;
+        return `/api/player?server=vidking&type=${type}&id=${id}&season=${season}&episode=${episode}`;
       case "peachify":
-        return type === "tv"
-          ? `https://peachify.pro/embed/tv/${id}/${season}/${episode}`
-          : `https://peachify.pro/embed/movie/${id}`;
+        return `/api/player?server=peachify&type=${type}&id=${id}&season=${season}&episode=${episode}`;
       case "videasy":
-        return type === "tv"
-          ? `https://player.videasy.to/tv/${id}/${season}/${episode}`
-          : `https://player.videasy.to/movie/${id}`;
+        return `/api/player?server=videasy&type=${type}&id=${id}&season=${season}&episode=${episode}`;
       case "vidnest":
         return `/api/player?server=vidnest&type=${type}&id=${id}&season=${season}&episode=${episode}`;
+      case "vidfast":
+        return `/api/player?server=vidfast&type=${type}&id=${id}&season=${season}&episode=${episode}`;
+      case "vidlink":
+        return `/api/player?server=vidlink&type=${type}&id=${id}&season=${season}&episode=${episode}`;
       case "smashy":
         return type === "tv"
           ? `https://embed.smashystream.com/playere.php?tmdb=${id}&season=${season}&episode=${episode}`
@@ -421,14 +419,6 @@ export function VideoPlayerView({
         return type === "tv"
           ? `https://nhdapi.com/tv/${id}/${season}/${episode}?autoPlay=true`
           : `https://nhdapi.com/movie/${id}?autoPlay=true`;
-      case "vidfast":
-        return type === "tv"
-          ? `https://vidfast.pro/tv/${id}/${season}/${episode}`
-          : `https://vidfast.pro/movie/${id}`;
-      case "vidlink":
-        return type === "tv"
-          ? `https://vidlink.pro/tv/${id}/${season}/${episode}?primaryColor=e50914&secondaryColor=e50914&autoplay=true`
-          : `https://vidlink.pro/movie/${id}?primaryColor=e50914&secondaryColor=e50914&autoplay=true`;
       case "vidmov":
         return type === "tv"
           ? `https://vidsrc.to/embed/tv/${id}/${season}/${episode}`
@@ -532,7 +522,7 @@ export function VideoPlayerView({
             </div>
 
             <p className="text-[11px] text-zinc-400 bg-white/10 border border-white/15 rounded-full px-3 py-1">
-              Tip: Server 2 (Peachify) & Server 4 (VidNest) offer instant playback
+              Tip: Ultra-Buffering Engine active · 2–4 min pre-buffer & zero-stall playback
             </p>
           </div>
         </div>
@@ -861,53 +851,55 @@ export function VideoPlayerView({
                 )}
               </div>
 
-              {/* Search Input */}
-              <div className="relative flex items-center bg-black/60 backdrop-blur-md border border-white/15 rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs text-white focus-within:border-white/40 focus-within:bg-black/80 transition-all w-28 sm:w-44">
-                <Search className="h-3.5 w-3.5 text-zinc-400 shrink-0 mr-1.5" />
-                <input
-                  type="text"
-                  placeholder="Search"
-                  value={episodeSearchQuery}
-                  onChange={(e) => setEpisodeSearchQuery(e.target.value)}
-                  className="bg-transparent text-white placeholder-zinc-500 text-xs outline-none w-full"
-                />
-                {episodeSearchQuery && (
-                  <button
-                    onClick={() => setEpisodeSearchQuery("")}
-                    className="text-zinc-400 hover:text-white ml-1 cursor-pointer"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-
-              {/* Autoplay Next Toggle */}
-              <button
-                onClick={toggleAutoplayNext}
-                title={autoplayNext ? "Autoplay Next: Enabled" : "Autoplay Next: Disabled"}
-                aria-label="Toggle autoplay next"
-                className="flex items-center gap-1.5 sm:gap-2 bg-black/60 backdrop-blur-md border border-white/15 hover:border-white/30 rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 transition-all cursor-pointer"
-              >
-                <SkipForward className="h-3.5 w-3.5 text-zinc-300" />
-                <div
-                  className={`w-7 sm:w-8 h-4 rounded-full p-0.5 transition-colors duration-200 ${
-                    autoplayNext ? "bg-white" : "bg-zinc-700"
-                  }`}
-                >
-                  <div
-                    className={`w-3 h-3 rounded-full transition-transform duration-200 ${
-                      autoplayNext ? "translate-x-3 sm:translate-x-4 bg-black" : "translate-x-0 bg-white"
-                    }`}
+              {/* Unified Search & Next (Autoplay) Button Container matching Screenshot */}
+              <div className="flex items-center bg-[#14141c]/90 backdrop-blur-md border border-white/10 hover:border-white/20 focus-within:border-white/30 rounded-xl h-8.5 sm:h-9.5 px-3 gap-2.5 transition-all shadow-sm">
+                {/* Search icon + input */}
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <Search className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Search"
+                    value={episodeSearchQuery}
+                    onChange={(e) => setEpisodeSearchQuery(e.target.value)}
+                    className="bg-transparent text-white placeholder-zinc-500 text-xs sm:text-sm outline-none w-20 sm:w-28 md:w-36 focus:w-44 transition-all"
                   />
+                  {episodeSearchQuery && (
+                    <button
+                      onClick={() => setEpisodeSearchQuery("")}
+                      className="text-zinc-400 hover:text-white cursor-pointer mr-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
                 </div>
-              </button>
+
+                {/* Next button + Autoplay Toggle Switch */}
+                <button
+                  type="button"
+                  onClick={toggleAutoplayNext}
+                  role="switch"
+                  aria-checked={autoplayNext}
+                  title={autoplayNext ? "Autoplay Next: Enabled" : "Autoplay Next: Disabled"}
+                  aria-label="Toggle autoplay next episode"
+                  className="flex items-center gap-1.5 shrink-0 pl-2.5 border-l border-white/10 cursor-pointer select-none group"
+                >
+                  <SkipForward className="h-3.5 w-3.5 text-zinc-300 group-hover:text-white transition-colors" />
+                  <div className="w-8 h-4.5 rounded-full p-0.5 bg-[#383844] group-hover:bg-[#444452] transition-colors relative flex items-center">
+                    <div
+                      className={`w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                        autoplayNext ? "translate-x-3.5" : "translate-x-0"
+                      }`}
+                    />
+                  </div>
+                </button>
+              </div>
 
               {/* Close Button */}
               <button
                 onClick={() => setIsEpisodeModalOpen(false)}
                 title="Close (Esc)"
                 aria-label="Close"
-                className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-black/60 hover:bg-black/90 text-zinc-300 hover:text-white border border-white/15 hover:border-white/30 transition-all cursor-pointer active:scale-95"
+                className="flex h-8.5 w-8.5 sm:h-9.5 sm:w-9.5 items-center justify-center rounded-xl bg-[#14141c] hover:bg-[#1e1e28] text-zinc-300 hover:text-white border border-white/10 hover:border-white/20 transition-all cursor-pointer active:scale-95 shadow-sm"
               >
                 <X className="h-4 w-4" />
               </button>

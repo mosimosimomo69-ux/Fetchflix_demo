@@ -13,6 +13,8 @@ import {
   Calendar,
   Film,
   Play,
+  SkipForward,
+  X,
 } from "lucide-react";
 import type { Episode, SeasonSummary } from "@/lib/api/tmdb";
 import { stillUrl, wsrvUrl } from "@/lib/api/tmdb";
@@ -76,6 +78,27 @@ export function SeasonBrowser({ tvId, seasons, onPlayEpisode }: SeasonBrowserPro
   const [searchQuery, setSearchQuery] = useState("");
   const [sortAsc, setSortAsc] = useState(true);
   const [seasonDropdownOpen, setSeasonDropdownOpen] = useState(false);
+  const [autoplayNext, setAutoplayNext] = useState<boolean>(true);
+
+  // Restore preferred autoplay next setting from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("fetchflix_autoplay_next");
+      if (saved !== null) {
+        setAutoplayNext(saved === "true");
+      }
+    } catch {}
+  }, []);
+
+  const toggleAutoplayNext = () => {
+    setAutoplayNext((prev) => {
+      const nextVal = !prev;
+      try {
+        localStorage.setItem("fetchflix_autoplay_next", String(nextVal));
+      } catch {}
+      return nextVal;
+    });
+  };
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -159,41 +182,41 @@ export function SeasonBrowser({ tvId, seasons, onPlayEpisode }: SeasonBrowserPro
         </h2>
       </div>
 
-      {/* 2. Controls Toolbar: Season Dropdown + Search + Sort Button */}
+      {/* 2. Controls Toolbar: Season Dropdown + Unified Search & Next + Sort Button */}
       <div className="flex flex-wrap items-center gap-3">
         {/* Season Selector Dropdown */}
         <div className="relative" ref={dropdownRef}>
           <button
             type="button"
             onClick={() => setSeasonDropdownOpen(!seasonDropdownOpen)}
-            className="flex h-10 items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#12121a] px-4 text-xs sm:text-sm font-medium text-white shadow-sm transition-all hover:border-white/20 hover:bg-[#161622] select-none"
+            className="flex h-10 items-center justify-between gap-2.5 rounded-xl border border-[#e50914]/40 bg-[#2d0e12] hover:bg-[#3d1217] px-3.5 text-xs sm:text-sm font-semibold text-[#ff4c53] shadow-md transition-all active:scale-95 select-none cursor-pointer"
           >
             <span>{currentSeasonObj?.name || `Season ${selected}`}</span>
             <ChevronDown
-              className={`h-4 w-4 text-white/50 transition-transform duration-200 ${
-                seasonDropdownOpen ? "rotate-180 text-white" : ""
+              className={`h-4 w-4 text-[#ff4c53] transition-transform duration-200 ${
+                seasonDropdownOpen ? "rotate-180" : ""
               }`}
             />
           </button>
 
           {seasonDropdownOpen && (
-            <div className="absolute left-0 top-full mt-2 z-50 w-52 rounded-xl border border-white/10 bg-[#0f0f16]/98 p-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute left-0 top-full mt-2 z-50 w-52 rounded-2xl border border-white/10 bg-[#14141c]/98 p-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
               {valid.map((s) => (
                 <button
                   key={s.id}
                   type="button"
                   onClick={() => onSelect(s.season_number)}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-lg transition-colors ${
+                  className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-xl transition-colors cursor-pointer ${
                     s.season_number === selected
-                      ? "bg-[#e50914] text-white font-semibold shadow-md"
-                      : "text-white/80 hover:bg-white/5 hover:text-white"
+                      ? "bg-[#e50914]/20 text-white font-semibold"
+                      : "text-zinc-200 hover:bg-white/10 hover:text-white"
                   }`}
                 >
                   <span>
                     {s.name} ({s.episode_count} eps)
                   </span>
                   {s.season_number === selected && (
-                    <Check className="h-3.5 w-3.5" />
+                    <Check className="h-3.5 w-3.5 text-[#e50914]" />
                   )}
                 </button>
               ))}
@@ -201,23 +224,55 @@ export function SeasonBrowser({ tvId, seasons, onPlayEpisode }: SeasonBrowserPro
           )}
         </div>
 
-        {/* Search Episode Input */}
-        <div className="relative flex-1 max-w-sm sm:max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-          <input
-            type="text"
-            placeholder="Search episode..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-10 w-full rounded-xl border border-white/10 bg-[#12121a] pl-10 pr-4 text-xs sm:text-sm text-white placeholder:text-white/40 outline-none transition-colors focus:border-white/25 focus:bg-[#161622]"
-          />
+        {/* Unified Search & Next (Autoplay) Button Container matching Screenshot */}
+        <div className="flex items-center bg-[#14141c] border border-white/10 hover:border-white/20 focus-within:border-white/30 rounded-xl h-10 px-3 gap-2.5 transition-all shadow-sm flex-1 max-w-sm sm:max-w-md">
+          {/* Search icon + input */}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <Search className="h-4 w-4 text-zinc-400 shrink-0" />
+            <input
+              type="text"
+              placeholder="Search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-transparent text-white placeholder-zinc-500 text-xs sm:text-sm outline-none w-full"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="text-zinc-500 hover:text-white cursor-pointer mr-0.5"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Next button + Autoplay Toggle Switch */}
+          <button
+            type="button"
+            onClick={toggleAutoplayNext}
+            role="switch"
+            aria-checked={autoplayNext}
+            title={autoplayNext ? "Autoplay Next: Enabled" : "Autoplay Next: Disabled"}
+            aria-label="Toggle autoplay next episode"
+            className="flex items-center gap-1.5 shrink-0 pl-2.5 border-l border-white/10 cursor-pointer select-none group"
+          >
+            <SkipForward className="h-3.5 w-3.5 text-zinc-300 group-hover:text-white transition-colors" />
+            <div className="w-8 h-4.5 rounded-full p-0.5 bg-[#383844] group-hover:bg-[#444452] transition-colors relative flex items-center">
+              <div
+                className={`w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                  autoplayNext ? "translate-x-3.5" : "translate-x-0"
+                }`}
+              />
+            </div>
+          </button>
         </div>
 
         {/* Sort Order Button */}
         <button
           type="button"
           onClick={() => setSortAsc(!sortAsc)}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[#12121a] text-white/70 shadow-sm transition-all hover:border-white/20 hover:bg-[#161622] hover:text-white"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[#14141c] text-white/70 shadow-sm transition-all hover:border-white/20 hover:bg-[#1a1a24] hover:text-white cursor-pointer"
           title={sortAsc ? "Sort Ascending (1-N)" : "Sort Descending (N-1)"}
           aria-label="Sort Episodes"
         >
