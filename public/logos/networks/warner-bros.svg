@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 230" fill="none">
+  <!-- Warner Bros. Blue Shield with Gold/White WB Monogram -->
+  <path d="M100 12 C148 12 188 34 188 88 C188 152 136 204 100 220 C64 204 12 152 12 88 C12 34 52 12 100 12 Z" stroke="#002B66" stroke-width="12" fill="#002B66"/>
+  <!-- Warner Bros Letters -->
+  <!-- W -->
+  <path fill="#FFCC00" d="M38 68 l16 68 h16 l14 -48 l14 48 h16 l16 -68 h-18 l-10 46 l-12 -46 h-12 l-12 46 l-10 -46 z" transform="translate(18, 5)"/>
+  <!-- B -->
+  <path fill="#FFCC00" d="M116 73 h28 c14 0 22 7 22 17 c0 7 -4 13 -11 15 c9 2 14 9 14 17 c0 12 -9 19 -24 19 h-29 z M132 87 v13 h11 c5 0 8 -2 8 -6 c0 -5 -3 -7 -8 -7 z M132 112 v15 h12 c6 0 9 -3 9 -7 c0 -5 -3 -8 -9 -8 z"/>
+</svg>

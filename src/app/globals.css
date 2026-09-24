@@ -1,0 +1,250 @@
+@import "tailwindcss";
+
+:root {
+  --background: #060608;
+  --foreground: #f4f4f5;
+  --surface: #111116;
+  --surface-hover: #181820;
+  --cineby-red: #e50914;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-brand: var(--cineby-red);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbars */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---- Cineby-style Swiper navigation ----
+   Sleek floating circular buttons centered vertically on card images */
+.home-swiper .swiper-button-next,
+.home-swiper .swiper-button-prev {
+  --swiper-navigation-size: 20px;
+  --swiper-theme-color: #fff;
+  top: calc(var(--wash-h, 160px) / 2);
+  bottom: auto;
+  transform: translateY(-50%);
+  margin-top: 0;
+  height: 40px;
+  width: 40px;
+  border-radius: 9999px;
+  background-color: rgba(15, 15, 22, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 25;
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-swiper:hover .swiper-button-next:not(.swiper-button-disabled),
+.home-swiper:hover .swiper-button-prev:not(.swiper-button-disabled) {
+  opacity: 0.95;
+}
+
+.home-swiper .swiper-button-prev {
+  left: 6px;
+}
+
+.home-swiper .swiper-button-next {
+  right: 6px;
+}
+
+.home-swiper .swiper-button-prev:hover,
+.home-swiper .swiper-button-next:hover {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.1);
+  background-color: rgba(229, 9, 20, 0.95);
+  border-color: rgba(229, 9, 20, 0.7);
+  box-shadow: 0 0 16px rgba(229, 9, 20, 0.55);
+}
+
+.home-swiper .swiper-button-next.swiper-button-disabled,
+.home-swiper .swiper-button-prev.swiper-button-disabled {
+  opacity: 0 !important;
+  cursor: auto;
+  pointer-events: none;
+}
+
+/* Swiper 14 default SVG icon hidden */
+.home-swiper .swiper-button-next svg,
+.home-swiper .swiper-button-prev svg {
+  display: none;
+}
+
+/* Chevron icons drawn as SVG masks (no icon font needed) */
+.home-swiper .swiper-button-next::after,
+.home-swiper .swiper-button-prev::after {
+  content: "";
+  display: block;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  background-color: #fff;
+  transition: background-color 0.2s ease;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.home-swiper .swiper-button-prev::after {
+  -webkit-mask-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m15 18-6-6 6-6'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m15 18-6-6 6-6'/%3E%3C/svg%3E");
+}
+
+.home-swiper .swiper-button-next::after {
+  -webkit-mask-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E");
+}
+
+/* Hide arrows on touch-sized screens, like cineby */
+@media (max-width: 767px) {
+  .home-swiper .swiper-button-next,
+  .home-swiper .swiper-button-prev {
+    display: none;
+  }
+}
+
+
+/* ---- Seamless Dark Scrollbars (Cineby Aesthetic) ---- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: #e50914;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Custom Thin Scrollbar for Modals & Dropdowns */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 9999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* Custom Range Slider */
+input[type="range"] {
+  accent-color: #e50914;
+}
+
+/* Glass & Glow */
+.glass-panel {
+  background: rgba(14, 14, 18, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cineby-glow {
+  box-shadow: 0 0 25px -5px rgba(229, 9, 20, 0.35);
+}
+
+
+/* ---- Hero slideshow ---- */
+@keyframes hero-kenburns {
+  from { transform: scale(1); }
+  to   { transform: scale(1.07); }
+}
+.hero-kenburns {
+  animation: hero-kenburns 9s ease-out forwards;
+}
+
+@keyframes hero-progress {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
+/* ---- Smooth page transitions ---- */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+main {
+  animation: page-enter 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ---- Hardware acceleration for animated elements ---- */
+.transition-transform,
+.transition-all,
+.transition-opacity {
+  will-change: auto;
+}
+
+/* ---- Smooth image loading ---- */
+img {
+  transition: opacity 0.3s ease;
+}

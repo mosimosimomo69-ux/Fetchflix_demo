@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 80" fill="#000000">
+  <!-- Apple Logo -->
+  <g transform="translate(20, 10) scale(0.6)">
+    <path d="M78 32 c-8 0 -17 5 -22 5 c-5 0 -13 -5 -21 -5 c-11 0 -22 6 -28 16 c-12 20 -3 50 8 66 c6 8 12 17 21 17 c8 0 12 -5 22 -5 c10 0 13 5 22 5 c9 0 15 -8 20 -16 c7 -9 9 -19 10 -19 c-1 0 -18 -7 -18 -27 c0 -17 14 -25 15 -26 c-8 -12 -21 -13 -25 -13 z M62 22 c4 -5 7 -13 6 -22 c-7 0 -15 5 -20 10 c-4 5 -8 13 -7 21 c8 1 16 -4 21 -9 z"/>
+  </g>
+  <!-- Studios text -->
+  <text x="144" y="44" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="24" font-weight="600" fill="#000000" letter-spacing="1">Studios</text>
+</svg>

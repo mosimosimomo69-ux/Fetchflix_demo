@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- DC Circle Badge in dark navy/black -->
+  <circle cx="100" cy="100" r="90" stroke="#000000" stroke-width="12" fill="none"/>
+  <!-- D -->
+  <path fill="#000000" d="M52 50 h34 c24 0 38 18 38 50 s-14 50 -38 50 h-34 z M74 72 v56 h12 c12 0 18 -9 18 -28 s-6 -28 -18 -28 z"/>
+  <!-- C -->
+  <path fill="#000000" d="M148 64 c-6 -10 -16 -16 -28 -16 c-12 0 -22 6 -28 16 l17 11 c4 -6 7 -9 11 -9 c7 0 12 6 12 16 v36 c0 10 -5 16 -12 16 c-4 0 -7 -3 -11 -9 l-17 11 c6 10 16 16 28 16 c12 0 22 -6 28 -16 z"/>
+</svg>
