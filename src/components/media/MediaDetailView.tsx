@@ -223,7 +223,8 @@ export function MediaDetailView({
               ref={iframeRef}
               src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&controls=0&loop=1&playlist=${trailerKey}&playsinline=1&rel=0&enablejsapi=1&disablekb=1&modestbranding=1&iv_load_policy=3`}
               title={`${title} Background Trailer`}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
               onLoad={() => setVideoReady(true)}
               onError={() => setVideoError(true)}
               className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] h-[56.25vw] min-h-[100%] min-w-[177.78vh] scale-125 border-0 pointer-events-none transition-opacity duration-1000 ${
