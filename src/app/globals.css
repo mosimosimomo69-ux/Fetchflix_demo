@@ -213,7 +213,10 @@ input[type="range"] {
   to   { transform: scale(1.07); }
 }
 .hero-kenburns {
-  animation: hero-kenburns 9s ease-out forwards;
+  animation: hero-kenburns 9s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 @keyframes hero-progress {

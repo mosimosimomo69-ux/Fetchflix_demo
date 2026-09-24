@@ -9,6 +9,8 @@ import {
   Sparkles,
   Loader2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Search,
   Clapperboard,
 } from "lucide-react";
@@ -84,7 +86,7 @@ export default function NetflixPage() {
   );
 
   const [bannerIndex, setBannerIndex] = useState(0);
-  const [isFading, setIsFading] = useState(false);
+  const [isHeroPaused, setIsHeroPaused] = useState(false);
 
   const featured =
     typeFilter === "movie"
@@ -135,24 +137,64 @@ export default function NetflixPage() {
     return items;
   }, [typeFilter, tvTop10, movieTop10, categories]);
 
-  const currentBanner = bannerItems[bannerIndex]?.item || featured?.item;
-  const currentRank = bannerItems[bannerIndex]?.rank || featured?.rank;
+  const [bannerMedia, setBannerMedia] = useState<
+    Record<number, { logo: string | null; backdrop: string | null }>
+  >({});
+
+  useEffect(() => {
+    if (!bannerItems.length) return;
+    bannerItems.forEach(({ item }) => {
+      if (!item?.id || bannerMedia[item.id]) return;
+      const type = resolveMediaType(item);
+      fetch(`/api/images?type=${type}&id=${item.id}`)
+        .then((r) =>
+          r.ok
+            ? (r.json() as Promise<{
+                logo_path?: string | null;
+                backdrop_path?: string | null;
+              }>)
+            : Promise.resolve({ logo_path: null, backdrop_path: null })
+        )
+        .then((d) => {
+          setBannerMedia((prev) => {
+            if (prev[item.id]) return prev;
+            return {
+              ...prev,
+              [item.id]: {
+                logo: d.logo_path || (item as MediaItem & { logo_path?: string }).logo_path || null,
+                backdrop: d.backdrop_path || null,
+              },
+            };
+          });
+        })
+        .catch(() => {
+          setBannerMedia((prev) => ({
+            ...prev,
+            [item.id]: { logo: null, backdrop: null },
+          }));
+        });
+    });
+  }, [bannerItems, bannerMedia]);
+
+  const nextSlide = useCallback(() => {
+    if (bannerItems.length < 2) return;
+    setBannerIndex((prev) => (prev + 1) % bannerItems.length);
+  }, [bannerItems.length]);
+
+  const prevSlide = useCallback(() => {
+    if (bannerItems.length < 2) return;
+    setBannerIndex((prev) => (prev - 1 + bannerItems.length) % bannerItems.length);
+  }, [bannerItems.length]);
 
   useEffect(() => {
     setBannerIndex(0);
   }, [typeFilter, country, genre]);
 
   useEffect(() => {
-    if (bannerItems.length < 2) return;
-    const interval = setInterval(() => {
-      setIsFading(true);
-      setTimeout(() => {
-        setBannerIndex((prev) => (prev + 1) % bannerItems.length);
-        setIsFading(false);
-      }, 500);
-    }, 10000);
+    if (bannerItems.length < 2 || isHeroPaused) return;
+    const interval = setInterval(nextSlide, 8000);
     return () => clearInterval(interval);
-  }, [bannerItems.length]);
+  }, [bannerItems.length, isHeroPaused, nextSlide]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -259,37 +301,7 @@ export default function NetflixPage() {
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [loading, featured]);
-
-  // Official title logo and clean textless backdrop for the hero
-  const currentBannerId = currentBanner?.id;
-  const [bannerLogo, setBannerLogo] = React.useState<string | null>(null);
-  const [bannerBackdrop, setBannerBackdrop] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    const item = currentBanner as (MediaItem & { media_type?: string }) | undefined;
-    if (!item?.id) {
-      setBannerLogo(null);
-      setBannerBackdrop(null);
-      return;
-    }
-    const type = resolveMediaType(item);
-    let cancelled = false;
-    setBannerLogo(item.logo_path || null);
-    setBannerBackdrop(null);
-    fetch(`/api/images?type=${type}&id=${item.id}`)
-      .then((r) => (r.ok ? r.json() : { logo_path: null, backdrop_path: null }))
-      .then((d) => {
-        if (!cancelled) {
-          if (d.logo_path) setBannerLogo(d.logo_path);
-          if (d.backdrop_path) setBannerBackdrop(d.backdrop_path);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [currentBannerId]);
+  }, [loading, bannerItems.length]);
 
   const pillBase =
     "flex items-center gap-1.5 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold transition-all border border-white/10 text-white/60 hover:bg-white/10 hover:text-white";
@@ -304,101 +316,159 @@ export default function NetflixPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0f]" style={{ backgroundColor: NETFLIX_SERVICE.bgPrimary }}>
       {/* Hero Banner - Full image with bottom gradient */}
-      <div className="relative h-[80vh] sm:h-[86vh] md:h-[90vh] lg:h-[94vh] min-h-[640px] max-h-[960px] w-full z-30">
+      <div
+        className="group/hero relative h-[80vh] sm:h-[86vh] md:h-[90vh] lg:h-[94vh] min-h-[640px] max-h-[960px] w-full z-30 select-none overflow-hidden"
+        onMouseEnter={() => setIsHeroPaused(true)}
+        onMouseLeave={() => setIsHeroPaused(false)}
+      >
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="h-10 w-10 text-[#e50914] animate-spin" />
           </div>
-        ) : currentBanner ? (
+        ) : bannerItems.length > 0 ? (
           <>
-            {/* Clickable Banner Background Overlay that triggers Play */}
-            <Link
-              href={`/${resolveMediaType(currentBanner)}/${currentBanner.id}?play=true`}
-              className="absolute inset-0 z-20 cursor-pointer"
-              aria-label={`Play ${getTitle(currentBanner)}`}
-            />
+            {/* Background Slides (Layered smooth cross-fade with Ken Burns zoom) */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              {bannerItems.map(({ item }, idx) => {
+                const isActive = idx === bannerIndex;
+                const media = bannerMedia[item.id];
+                const imgPath =
+                  media?.backdrop ||
+                  (item as MediaItem & { still_path?: string | null }).still_path ||
+                  item.backdrop_path ||
+                  item.poster_path;
 
-            {/* Background Image & Gradient Layer (overflow isolated) */}
-            <div className={`absolute inset-0 overflow-hidden pointer-events-none transition-opacity duration-500 ${isFading ? "opacity-0" : "opacity-100"}`}>
-              {(() => {
-                const cleanImg = bannerBackdrop || currentBanner.backdrop_path || currentBanner.poster_path;
-                return cleanImg ? (
-                  <Image
-                    key={`${currentBanner.id}-${bannerIndex}`}
-                    src={wsrvUrl(backdropUrl(cleanImg, "original"))}
-                    alt={getTitle(currentBanner)}
-                    fill
-                    className="object-cover object-center"
-                    priority
-                    unoptimized
-                  />
-                ) : (
-                  <div className="absolute inset-0" style={{ backgroundColor: NETFLIX_SERVICE.bgSecondary }} />
-                );
-              })()}
+                if (!imgPath) return null;
 
-              {/* Single bottom fade keeps the image clean while UI stays readable */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/60 via-20% to-transparent to-45%" />
-            </div>
-
-            {/* Content positioned close to the bottom of the image */}
-            <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-6 md:px-8 lg:px-10 pb-4 sm:pb-6 md:pb-7 w-full z-40 pointer-events-none">
-              <Link
-                href={`/${resolveMediaType(currentBanner)}/${currentBanner.id}?play=true`}
-                className="block pointer-events-auto group/banner cursor-pointer max-w-xl"
-                aria-label={`Play ${getTitle(currentBanner)}`}
-              >
-                <div className="flex items-center gap-2 mb-2 sm:mb-2.5 flex-wrap">
-                  {genre !== "all" ? (
-                    <span className="bg-[#e50914] text-white text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded tracking-wide uppercase">
-                      {selectedGenre.name}
-                    </span>
-                  ) : currentRank ? (
-                    <span className="bg-[#e50914] text-white text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded tracking-wide">
-                      #{currentRank}
-                    </span>
-                  ) : (
-                    <span className="bg-[#e50914] text-white text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded tracking-wide uppercase">
-                      Netflix
-                    </span>
-                  )}
-                  <span className="text-white/90 text-xs sm:text-sm font-semibold tracking-wider uppercase">
-                    NETFLIX {genre !== "all" ? selectedGenre.name : "TOP 10"}
-                  </span>
-                  <span className="text-white/40 text-xs">|</span>
-                  <span className="text-white/50 text-[10px] sm:text-xs">
-                    {selectedCountry.flag} {selectedCountry.name}
-                  </span>
-                  {genre === "all" && (tvDateRange || movieDateRange) && (
-                    <>
-                      <span className="text-white/40 text-xs">|</span>
-                      <span className="text-white/40 text-[10px] sm:text-xs">
-                        {tvDateRange || movieDateRange}
-                      </span>
-                    </>
-                  )}
-                </div>
-
-                {bannerLogo ? (
-                  <div className={`relative h-12 sm:h-16 md:h-20 w-auto max-w-[240px] sm:max-w-[320px] md:max-w-[400px] mb-1.5 sm:mb-2 transition-opacity duration-500 group-hover/banner:scale-105 transition-transform ${isFading ? "opacity-0" : "opacity-100"}`}>
+                return (
+                  <div
+                    key={`netflix-bg-${item.id}`}
+                    className={`absolute inset-0 transition-opacity duration-1000 ease-in-out will-change-[opacity] ${
+                      isActive ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
+                    }`}
+                  >
                     <Image
-                      src={wsrvUrl(logoUrl(bannerLogo, "w500"), 95)}
-                      alt={getTitle(currentBanner)}
+                      src={wsrvUrl(backdropUrl(imgPath, "original"), 90)}
+                      alt={getTitle(item)}
                       fill
-                      className="object-contain object-left drop-shadow-[0_10px_25px_rgba(0,0,0,0.9)]"
+                      priority={idx === 0}
+                      className={`object-cover object-center ${
+                        isActive ? "hero-kenburns" : ""
+                      }`}
                       unoptimized
                     />
                   </div>
-                ) : (
-                  <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-white mb-1.5 sm:mb-2 tracking-tight leading-tight group-hover/banner:text-white/90 transition-all duration-500 ${isFading ? "opacity-0" : "opacity-100"}`}>
-                    {getTitle(currentBanner)}
-                  </h1>
-                )}
+                );
+              })}
 
-                <p className={`text-xs sm:text-sm md:text-base text-white/70 line-clamp-2 sm:line-clamp-3 max-w-xl transition-opacity duration-500 ${isFading ? "opacity-0" : "opacity-100"}`}>
-                  {currentBanner.overview}
-                </p>
-              </Link>
+              {/* Single bottom fade keeps the image clean while UI stays readable */}
+              <div className="absolute inset-0 z-15 pointer-events-none bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/60 via-20% to-transparent to-45%" />
+            </div>
+
+            {/* Previous / Next Arrow Chevrons (visible on hover on desktop) */}
+            {bannerItems.length > 1 && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    prevSlide();
+                  }}
+                  className="hidden md:flex absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 z-40 h-11 w-11 rounded-full bg-black/50 hover:bg-black/85 text-white items-center justify-center border border-white/15 backdrop-blur-md opacity-0 group-hover/hero:opacity-100 transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer shadow-xl"
+                  aria-label="Previous slide"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    nextSlide();
+                  }}
+                  className="hidden md:flex absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 z-40 h-11 w-11 rounded-full bg-black/50 hover:bg-black/85 text-white items-center justify-center border border-white/15 backdrop-blur-md opacity-0 group-hover/hero:opacity-100 transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer shadow-xl"
+                  aria-label="Next slide"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </>
+            )}
+
+            {/* Content positioned close to the bottom of the image */}
+            <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-6 md:px-8 lg:px-10 pb-4 sm:pb-6 md:pb-7 w-full z-30 pointer-events-none">
+              {/* Stacked animated slides text content with smooth cross-fade and subtle lift */}
+              <div className="relative min-h-[140px] sm:min-h-[160px] md:min-h-[180px] max-w-xl">
+                {bannerItems.map(({ item, rank }, idx) => {
+                  const isActive = idx === bannerIndex;
+                  const media = bannerMedia[item.id];
+                  const logo = media?.logo;
+
+                  return (
+                    <div
+                      key={`netflix-text-${item.id}`}
+                      className={`transition-all duration-700 ease-out will-change-[opacity,transform] ${
+                        isActive
+                          ? "opacity-100 translate-y-0 relative z-20 pointer-events-auto"
+                          : "opacity-0 translate-y-2 absolute inset-0 z-10 pointer-events-none"
+                      }`}
+                    >
+                      <Link
+                        href={`/${resolveMediaType(item)}/${item.id}?play=true`}
+                        className="block group/banner cursor-pointer max-w-xl"
+                        aria-label={`Play ${getTitle(item)}`}
+                      >
+                        <div className="flex items-center gap-2 mb-2 sm:mb-2.5 flex-wrap">
+                          {genre !== "all" ? (
+                            <span className="bg-[#e50914] text-white text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded tracking-wide uppercase">
+                              {selectedGenre.name}
+                            </span>
+                          ) : rank ? (
+                            <span className="bg-[#e50914] text-white text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded tracking-wide">
+                              #{rank}
+                            </span>
+                          ) : (
+                            <span className="bg-[#e50914] text-white text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded tracking-wide uppercase">
+                              Netflix
+                            </span>
+                          )}
+                          <span className="text-white/90 text-xs sm:text-sm font-semibold tracking-wider uppercase">
+                            NETFLIX {genre !== "all" ? selectedGenre.name : "TOP 10"}
+                          </span>
+                          <span className="text-white/40 text-xs">|</span>
+                          <span className="text-white/50 text-[10px] sm:text-xs">
+                            {selectedCountry.flag} {selectedCountry.name}
+                          </span>
+                          {genre === "all" && (tvDateRange || movieDateRange) && (
+                            <>
+                              <span className="text-white/40 text-xs">|</span>
+                              <span className="text-white/40 text-[10px] sm:text-xs">
+                                {tvDateRange || movieDateRange}
+                              </span>
+                            </>
+                          )}
+                        </div>
+
+                        {logo ? (
+                          <div className="relative h-12 sm:h-16 md:h-20 w-auto max-w-[240px] sm:max-w-[320px] md:max-w-[400px] mb-1.5 sm:mb-2 transition-transform duration-300 group-hover/banner:scale-105">
+                            <Image
+                              src={wsrvUrl(logoUrl(logo, "w500"), 95)}
+                              alt={getTitle(item)}
+                              fill
+                              className="object-contain object-left drop-shadow-[0_10px_25px_rgba(0,0,0,0.9)]"
+                              unoptimized
+                            />
+                          </div>
+                        ) : (
+                          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-white mb-1.5 sm:mb-2 tracking-tight leading-tight group-hover/banner:text-white/90 transition-colors">
+                            {getTitle(item)}
+                          </h1>
+                        )}
+
+                        <p className="text-xs sm:text-sm md:text-base text-white/70 line-clamp-2 sm:line-clamp-3 max-w-xl">
+                          {item.overview}
+                        </p>
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
 
               {/* Toolbar Controls on Banner Image below description (Search icon hidden here) */}
               <div ref={bannerToolbarRef} className="mt-3.5 sm:mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full pointer-events-auto">
@@ -551,8 +621,26 @@ export default function NetflixPage() {
                   </span>
                 </div>
 
-                {/* Right: Type Filter Tabs (Search icon hidden here) */}
-                <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
+                {/* Right: Slide Indicators + Type Filter Tabs (Search icon hidden here) */}
+                <div className="flex items-center gap-2.5 sm:gap-3 flex-shrink-0">
+                  {/* Slide Indicators */}
+                  {bannerItems.length > 1 && (
+                    <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-2.5 py-1.5 rounded-full border border-white/10">
+                      {bannerItems.map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setBannerIndex(idx)}
+                          aria-label={`Slide ${idx + 1}`}
+                          className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                            idx === bannerIndex
+                              ? "w-5 sm:w-6 bg-white shadow-sm"
+                              : "w-1.5 bg-white/30 hover:bg-white/60"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-1 rounded-full border border-white/10 bg-[#14141c] p-1">
                     {TYPE_TABS.map((tab) => (
                       <button
@@ -560,7 +648,7 @@ export default function NetflixPage() {
                         onClick={() => setTypeFilter(tab.key)}
                         className={`flex items-center gap-1 rounded-full px-2.5 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-medium transition-all ${
                           typeFilter === tab.key
-                            ? "bg-white/10 text-white"
+                            ? "bg-white/10 text-white font-semibold shadow-sm"
                             : "text-white/50 hover:text-white"
                         }`}
                       >

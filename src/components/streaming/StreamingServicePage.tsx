@@ -9,6 +9,8 @@ import {
   Sparkles,
   Loader2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Search,
   Clapperboard,
 } from "lucide-react";
@@ -68,7 +70,7 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
   const [genre, setGenre] = useState("all");
   const [isScrolled, setIsScrolled] = useState(false);
   const [bannerIndex, setBannerIndex] = useState(0);
-  const [isFading, setIsFading] = useState(false);
+  const [isHeroPaused, setIsHeroPaused] = useState(false);
   const [countryOpen, setCountryOpen] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
   const [genreOpen, setGenreOpen] = useState(false);
@@ -95,12 +97,6 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
     g.name.toLowerCase().includes(genreSearch.toLowerCase())
   );
 
-  const featured =
-    top10[0]?.item ||
-    (categories[0]?.items[0]
-      ? { ...categories[0].items[0], _featuredFromCat: true }
-      : null);
-
   const bannerItems = useMemo(() => {
     const items: { item: MediaItem; rank?: number; label?: string }[] = [];
     for (const t of top10.slice(0, 8)) {
@@ -119,94 +115,67 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
     return items;
   }, [top10, categories]);
 
-  const currentBanner = bannerItems[bannerIndex]?.item || featured;
+  // Reactive media storage for logos & high-res clean backdrops
+  const [bannerMedia, setBannerMedia] = useState<
+    Record<number, { logo: string | null; backdrop: string | null }>
+  >({});
 
-  // Cache: pre-fetch all banner image data upfront so slide transitions are instant
-  const [bannerLogo, setBannerLogo] = useState<string | null>(null);
-  const [bannerBackdrop, setBannerBackdrop] = useState<string | null>(null);
-  const [bannerReady, setBannerReady] = useState(false);
-  const bannerCache = useRef<Map<number, { logo: string | null; backdrop: string | null }>>(new Map());
-
-  // Pre-fetch ALL banner items as soon as they're available
+  // Pre-fetch logos & backdrops for all banner items
   useEffect(() => {
     if (!bannerItems.length) return;
     bannerItems.forEach(({ item }) => {
-      if (!item?.id || bannerCache.current.has(item.id)) return;
+      if (!item?.id || bannerMedia[item.id]) return;
       const type = resolveMediaType(item);
       fetch(`/api/images?type=${type}&id=${item.id}`)
-        .then((r) => (r.ok ? r.json() as Promise<{ logo_path?: string | null; backdrop_path?: string | null }> : Promise.resolve({ logo_path: null, backdrop_path: null })))
+        .then((r) =>
+          r.ok
+            ? (r.json() as Promise<{
+                logo_path?: string | null;
+                backdrop_path?: string | null;
+              }>)
+            : Promise.resolve({ logo_path: null, backdrop_path: null })
+        )
         .then((d) => {
-          bannerCache.current.set(item.id, {
-            logo: d.logo_path || (item as MediaItem & { logo_path?: string }).logo_path || null,
-            backdrop: d.backdrop_path || null,
+          setBannerMedia((prev) => {
+            if (prev[item.id]) return prev;
+            return {
+              ...prev,
+              [item.id]: {
+                logo: d.logo_path || (item as MediaItem & { logo_path?: string }).logo_path || null,
+                backdrop: d.backdrop_path || null,
+              },
+            };
           });
         })
         .catch(() => {
-          bannerCache.current.set(item.id, { logo: null, backdrop: null });
+          setBannerMedia((prev) => ({
+            ...prev,
+            [item.id]: { logo: null, backdrop: null },
+          }));
         });
     });
-  }, [bannerItems]);
+  }, [bannerItems, bannerMedia]);
 
-  // When current banner changes, serve from cache instantly (or fetch if not yet cached)
-  useEffect(() => {
-    const item = currentBanner as (MediaItem & { media_type?: string; logo_path?: string }) | null;
-    if (!item?.id) {
-      setBannerLogo(null);
-      setBannerBackdrop(null);
-      setBannerReady(false);
-      return;
-    }
-    const cached = bannerCache.current.get(item.id);
-    if (cached) {
-      // Already in cache — instant, no flash
-      setBannerLogo(cached.logo);
-      setBannerBackdrop(cached.backdrop);
-      setBannerReady(true);
-      return;
-    }
-    // Not yet cached (e.g. first slide on load) — fetch it
-    const type = resolveMediaType(item);
-    let cancelled = false;
-    setBannerLogo(item.logo_path || null);
-    setBannerBackdrop(null);
-    setBannerReady(false);
-    fetch(`/api/images?type=${type}&id=${item.id}`)
-      .then((r) => (r.ok ? r.json() as Promise<{ logo_path?: string | null; backdrop_path?: string | null }> : Promise.resolve({ logo_path: null, backdrop_path: null })))
-      .then((d) => {
-        if (!cancelled) {
-          const logo = d.logo_path || item.logo_path || null;
-          const backdrop = d.backdrop_path || null;
-          bannerCache.current.set(item.id, { logo, backdrop });
-          setBannerLogo(logo);
-          setBannerBackdrop(backdrop);
-          setBannerReady(true);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          bannerCache.current.set(item.id, { logo: null, backdrop: null });
-          setBannerReady(true);
-        }
-      });
-    return () => { cancelled = true; };
-  }, [currentBanner]);
+  const nextSlide = useCallback(() => {
+    if (bannerItems.length < 2) return;
+    setBannerIndex((prev) => (prev + 1) % bannerItems.length);
+  }, [bannerItems.length]);
+
+  const prevSlide = useCallback(() => {
+    if (bannerItems.length < 2) return;
+    setBannerIndex((prev) => (prev - 1 + bannerItems.length) % bannerItems.length);
+  }, [bannerItems.length]);
 
   useEffect(() => {
     setBannerIndex(0);
   }, [typeFilter, country, genre]);
 
-  // Smooth auto-advance: fade out → swap (instant from cache) → fade in
+  // Seamless auto-advance: 8s interval with pause on hover
   useEffect(() => {
-    if (bannerItems.length < 2) return;
-    const interval = setInterval(() => {
-      setIsFading(true);
-      setTimeout(() => {
-        setBannerIndex((prev) => (prev + 1) % bannerItems.length);
-        setIsFading(false);
-      }, 700);
-    }, 10000);
+    if (bannerItems.length < 2 || isHeroPaused) return;
+    const interval = setInterval(nextSlide, 8000);
     return () => clearInterval(interval);
-  }, [bannerItems.length]);
+  }, [bannerItems.length, isHeroPaused, nextSlide]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -264,7 +233,7 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [loading, featured]);
+  }, [loading, bannerItems.length]);
 
   const fetchAll = useCallback(
     async (type: TypeFilter, countryCode: string, genreCode: string) => {
@@ -316,7 +285,11 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
   return (
     <div className="min-h-screen" style={{ backgroundColor: service.bgPrimary }}>
       {/* Hero Banner - Full image with bottom gradient */}
-      <div className="relative h-[80vh] sm:h-[86vh] md:h-[90vh] lg:h-[94vh] min-h-[640px] max-h-[960px] w-full z-30">
+      <div
+        className="group/hero relative h-[80vh] sm:h-[86vh] md:h-[90vh] lg:h-[94vh] min-h-[640px] max-h-[960px] w-full z-30 select-none overflow-hidden"
+        onMouseEnter={() => setIsHeroPaused(true)}
+        onMouseLeave={() => setIsHeroPaused(false)}
+      >
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2
@@ -324,131 +297,152 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
               style={{ color: service.color }}
             />
           </div>
-        ) : featured ? (
+        ) : bannerItems.length > 0 ? (
           <>
-            {/* Clickable Banner Background Overlay that triggers Play */}
-            {currentBanner && (
-              <Link
-                href={`/${resolveMediaType(currentBanner)}/${currentBanner.id}?play=true`}
-                className="absolute inset-0 z-20 cursor-pointer"
-                aria-label={`Play ${getTitle(currentBanner)}`}
-              />
-            )}
+            {/* Background Slides (Layered smooth cross-fade with Ken Burns zoom) */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              {bannerItems.map(({ item }, idx) => {
+                const isActive = idx === bannerIndex;
+                const media = bannerMedia[item.id];
+                const imgPath =
+                  media?.backdrop ||
+                  (item as MediaItem & { still_path?: string | null }).still_path ||
+                  item.backdrop_path ||
+                  item.poster_path;
 
-            {/* Background Image & Gradient Layer (overflow isolated) */}
-            <div className={`absolute inset-0 overflow-hidden pointer-events-none transition-opacity duration-500 ${isFading ? "opacity-0" : "opacity-100"}`}>
-              {(() => {
-                const item = currentBanner as MediaItem & {
-                  still_path?: string | null;
-                };
-                // Fallback (text) image — always available immediately
-                const fallbackImg = item.still_path || currentBanner.backdrop_path || currentBanner.poster_path;
-                // Clean textless image — only available after fetch
-                const cleanImg = bannerBackdrop || null;
+                if (!imgPath) return null;
+
                 return (
-                  <>
-                    {/* Fallback image: always shown, fades out when clean image is ready */}
-                    {fallbackImg && (
-                      <Image
-                        key={`fallback-${currentBanner.id}`}
-                        src={wsrvUrl(backdropUrl(fallbackImg, "original"))}
-                        alt={getTitle(currentBanner)}
-                        fill
-                        className={`object-cover object-center transition-opacity duration-700 ${bannerReady && cleanImg ? "opacity-0" : "opacity-100"}`}
-                        priority
-                        unoptimized
-                      />
-                    )}
-                    {/* Clean textless image: fades in on top once fetch resolves */}
-                    {cleanImg && (
-                      <Image
-                        key={`clean-${currentBanner.id}-${cleanImg}`}
-                        src={wsrvUrl(backdropUrl(cleanImg, "original"))}
-                        alt={getTitle(currentBanner)}
-                        fill
-                        className={`object-cover object-center transition-opacity duration-700 ${bannerReady ? "opacity-100" : "opacity-0"}`}
-                        priority
-                        unoptimized
-                      />
-                    )}
-                    {!fallbackImg && !cleanImg && (
-                      <div className="absolute inset-0" style={{ backgroundColor: service.bgSecondary }} />
-                    )}
-                  </>
+                  <div
+                    key={`hero-bg-${item.id}`}
+                    className={`absolute inset-0 transition-opacity duration-1000 ease-in-out will-change-[opacity] ${
+                      isActive ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
+                    }`}
+                  >
+                    <Image
+                      src={wsrvUrl(backdropUrl(imgPath, "original"), 90)}
+                      alt={getTitle(item)}
+                      fill
+                      priority={idx === 0}
+                      className={`object-cover object-center ${
+                        isActive ? "hero-kenburns" : ""
+                      }`}
+                      unoptimized
+                    />
+                  </div>
                 );
-              })()}
+              })}
 
               {/* Single bottom fade keeps the image clean while UI stays readable */}
               <div
-                className="absolute inset-0"
+                className="absolute inset-0 z-15 pointer-events-none"
                 style={{
                   background: `linear-gradient(to top, ${service.bgPrimary} 0%, ${service.bgPrimary}99 18%, transparent 45%)`,
                 }}
               />
             </div>
 
+            {/* Previous / Next Arrow Chevrons (visible on hover on desktop) */}
+            {bannerItems.length > 1 && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    prevSlide();
+                  }}
+                  className="hidden md:flex absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 z-40 h-11 w-11 rounded-full bg-black/50 hover:bg-black/85 text-white items-center justify-center border border-white/15 backdrop-blur-md opacity-0 group-hover/hero:opacity-100 transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer shadow-xl"
+                  aria-label="Previous slide"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    nextSlide();
+                  }}
+                  className="hidden md:flex absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 z-40 h-11 w-11 rounded-full bg-black/50 hover:bg-black/85 text-white items-center justify-center border border-white/15 backdrop-blur-md opacity-0 group-hover/hero:opacity-100 transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer shadow-xl"
+                  aria-label="Next slide"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </>
+            )}
+
             {/* Content positioned close to the bottom of the image */}
-            <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-6 md:px-8 lg:px-10 pb-4 sm:pb-6 md:pb-7 w-full z-40 pointer-events-none">
-              <Link
-                href={currentBanner ? `/${resolveMediaType(currentBanner)}/${currentBanner.id}?play=true` : "#"}
-                className="block pointer-events-auto group/banner cursor-pointer max-w-xl"
-                aria-label={`Play ${currentBanner ? getTitle(currentBanner) : ""}`}
-              >
-                <div className="flex items-center gap-2 mb-2 sm:mb-2.5 flex-wrap">
-                  {bannerItems[bannerIndex]?.rank ? (
-                    <span
-                      className="text-white text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded tracking-wide uppercase"
-                      style={{ backgroundColor: service.color }}
-                    >
-                      #{bannerItems[bannerIndex].rank}
-                    </span>
-                  ) : (
-                    <span
-                      className="text-white text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded tracking-wide uppercase"
-                      style={{ backgroundColor: service.color }}
-                    >
-                      {service.name}
-                    </span>
-                  )}
-                  <span
-                    className="text-xs sm:text-sm font-semibold tracking-wider uppercase"
-                    style={{ color: service.color }}
-                  >
-                    {genre !== "all" ? selectedGenre.name : "TOP 10"}
-                  </span>
-                  <span className="text-white/40 text-xs">|</span>
-                  <span className="text-white/50 text-[10px] sm:text-xs">
-                    {selectedCountry.flag} {selectedCountry.name}
-                  </span>
-                </div>
+            <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-6 md:px-8 lg:px-10 pb-4 sm:pb-6 md:pb-7 w-full z-30 pointer-events-none">
+              {/* Stacked animated slides text content with smooth cross-fade and subtle lift */}
+              <div className="relative min-h-[140px] sm:min-h-[160px] md:min-h-[180px] max-w-xl">
+                {bannerItems.map(({ item, rank }, idx) => {
+                  const isActive = idx === bannerIndex;
+                  const media = bannerMedia[item.id];
+                  const logo = media?.logo;
 
-                {bannerReady ? (
-                  bannerLogo ? (
+                  return (
                     <div
-                      className={`relative h-12 sm:h-16 md:h-20 w-auto max-w-[240px] sm:max-w-[320px] md:max-w-[400px] mb-1.5 sm:mb-2 transition-opacity duration-500 group-hover/banner:scale-105 transition-transform ${isFading ? "opacity-0" : "opacity-100"}`}
+                      key={`hero-text-${item.id}`}
+                      className={`transition-all duration-700 ease-out will-change-[opacity,transform] ${
+                        isActive
+                          ? "opacity-100 translate-y-0 relative z-20 pointer-events-auto"
+                          : "opacity-0 translate-y-2 absolute inset-0 z-10 pointer-events-none"
+                      }`}
                     >
-                      <Image
-                        src={wsrvUrl(logoUrl(bannerLogo, "w500"), 95)}
-                        alt={getTitle(currentBanner)}
-                        fill
-                        className="object-contain object-left drop-shadow-[0_10px_25px_rgba(0,0,0,0.9)]"
-                        unoptimized
-                      />
-                    </div>
-                  ) : (
-                    <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-white mb-1.5 sm:mb-2 tracking-tight leading-tight group-hover/banner:text-white/90 transition-all duration-500 ${isFading ? "opacity-0" : "opacity-100"}`}>
-                      {getTitle(currentBanner)}
-                    </h1>
-                  )
-                ) : (
-                  // Placeholder keeps layout stable while fetch is in-flight — invisible but reserves space
-                  <div className="h-12 sm:h-16 md:h-20 mb-1.5 sm:mb-2" />
-                )}
+                      <Link
+                        href={`/${resolveMediaType(item)}/${item.id}?play=true`}
+                        className="block group/banner cursor-pointer max-w-xl"
+                        aria-label={`Play ${getTitle(item)}`}
+                      >
+                        <div className="flex items-center gap-2 mb-2 sm:mb-2.5 flex-wrap">
+                          {rank ? (
+                            <span
+                              className="text-white text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded tracking-wide uppercase"
+                              style={{ backgroundColor: service.color }}
+                            >
+                              #{rank}
+                            </span>
+                          ) : (
+                            <span
+                              className="text-white text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded tracking-wide uppercase"
+                              style={{ backgroundColor: service.color }}
+                            >
+                              {service.name}
+                            </span>
+                          )}
+                          <span
+                            className="text-xs sm:text-sm font-semibold tracking-wider uppercase"
+                            style={{ color: service.color }}
+                          >
+                            {genre !== "all" ? selectedGenre.name : "TOP 10"}
+                          </span>
+                          <span className="text-white/40 text-xs">|</span>
+                          <span className="text-white/50 text-[10px] sm:text-xs">
+                            {selectedCountry.flag} {selectedCountry.name}
+                          </span>
+                        </div>
 
-                <p className={`text-xs sm:text-sm md:text-base text-white/70 line-clamp-2 sm:line-clamp-3 max-w-xl transition-opacity duration-500 ${isFading ? "opacity-0" : "opacity-100"}`}>
-                  {currentBanner.overview}
-                </p>
-              </Link>
+                        {logo ? (
+                          <div className="relative h-12 sm:h-16 md:h-20 w-auto max-w-[240px] sm:max-w-[320px] md:max-w-[400px] mb-1.5 sm:mb-2 transition-transform duration-300 group-hover/banner:scale-105">
+                            <Image
+                              src={wsrvUrl(logoUrl(logo, "w500"), 95)}
+                              alt={getTitle(item)}
+                              fill
+                              className="object-contain object-left drop-shadow-[0_10px_25px_rgba(0,0,0,0.9)]"
+                              unoptimized
+                            />
+                          </div>
+                        ) : (
+                          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-white mb-1.5 sm:mb-2 tracking-tight leading-tight group-hover/banner:text-white/90 transition-colors">
+                            {getTitle(item)}
+                          </h1>
+                        )}
+
+                        <p className="text-xs sm:text-sm md:text-base text-white/70 line-clamp-2 sm:line-clamp-3 max-w-xl">
+                          {item.overview}
+                        </p>
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
 
               {/* Toolbar Controls on Banner Image below description (Search icon hidden here) */}
               <div ref={bannerToolbarRef} className="mt-3.5 sm:mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full pointer-events-auto">
@@ -612,8 +606,26 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
                   </span>
                 </div>
 
-                {/* Right: Type Filter Tabs (Search icon hidden here) */}
-                <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
+                {/* Right: Slide Indicators + Type Filter Tabs (Search icon hidden here) */}
+                <div className="flex items-center gap-2.5 sm:gap-3 flex-shrink-0">
+                  {/* Slide Indicators */}
+                  {bannerItems.length > 1 && (
+                    <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-2.5 py-1.5 rounded-full border border-white/10">
+                      {bannerItems.map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setBannerIndex(idx)}
+                          aria-label={`Slide ${idx + 1}`}
+                          className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                            idx === bannerIndex
+                              ? "w-5 sm:w-6 bg-white shadow-sm"
+                              : "w-1.5 bg-white/30 hover:bg-white/60"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-1 rounded-full border border-white/10 bg-[#14141c] p-1">
                     {TYPE_TABS.map((tab) => (
                       <button
