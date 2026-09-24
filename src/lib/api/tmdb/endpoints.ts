@@ -230,6 +230,21 @@ export async function getMovieDetails(id: number) {
   });
   const logo_path = pickBestLogo(data.images?.logos);
 
+  let videos = data.videos?.results || [];
+  const hasTrailer = videos.some(
+    (v) => v.site === "YouTube" && (v.type === "Trailer" || v.type === "Teaser")
+  );
+  if (!hasTrailer) {
+    try {
+      const movieVideos = await tmdbFetch<{ results: typeof videos }>(`/movie/${id}/videos`, {
+        include_video_language: "en,null",
+      }).catch(() => null);
+      if (movieVideos?.results?.length) {
+        videos = [...videos, ...movieVideos.results];
+      }
+    } catch {}
+  }
+
   const [recommendationsResults, similarResults] = await Promise.all([
     data.recommendations?.results?.length
       ? enrichWithTitleBackdrops(data.recommendations.results, "movie")
@@ -241,6 +256,7 @@ export async function getMovieDetails(id: number) {
 
   return {
     ...data,
+    videos: { results: videos },
     logo_path,
     recommendations: data.recommendations
       ? { ...data.recommendations, results: recommendationsResults }
@@ -258,6 +274,31 @@ export async function getTVDetails(id: number) {
   });
   const logo_path = pickBestLogo(data.images?.logos);
 
+  let videos = data.videos?.results || [];
+  const hasTrailer = videos.some(
+    (v) => v.site === "YouTube" && (v.type === "Trailer" || v.type === "Teaser")
+  );
+  if (!hasTrailer) {
+    try {
+      const s1Videos = await tmdbFetch<{ results: typeof videos }>(`/tv/${id}/season/1/videos`, {
+        include_video_language: "en,null",
+      }).catch(() => null);
+      if (s1Videos?.results?.length) {
+        videos = [...videos, ...s1Videos.results];
+      }
+    } catch {}
+    if (!videos.some((v) => v.site === "YouTube" && (v.type === "Trailer" || v.type === "Teaser"))) {
+      try {
+        const tvVideos = await tmdbFetch<{ results: typeof videos }>(`/tv/${id}/videos`, {
+          include_video_language: "en,null",
+        }).catch(() => null);
+        if (tvVideos?.results?.length) {
+          videos = [...videos, ...tvVideos.results];
+        }
+      } catch {}
+    }
+  }
+
   const [recommendationsResults, similarResults] = await Promise.all([
     data.recommendations?.results?.length
       ? enrichWithTitleBackdrops(data.recommendations.results, "tv")
@@ -269,6 +310,7 @@ export async function getTVDetails(id: number) {
 
   return {
     ...data,
+    videos: { results: videos },
     logo_path,
     recommendations: data.recommendations
       ? { ...data.recommendations, results: recommendationsResults }

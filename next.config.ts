@@ -9,13 +9,13 @@ const MEDIA_HOSTS = [
 // Content Security Policy – tightly scoped to only what this app needs
 const ContentSecurityPolicy = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline' 'unsafe-eval';
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   font-src 'self' https://fonts.gstatic.com;
-  img-src 'self' data: blob: https://image.tmdb.org https://wsrv.nl;
+  img-src 'self' data: blob: https://image.tmdb.org https://wsrv.nl https://i.ytimg.com https://*.youtube.com;
   media-src 'self' blob: https:;
-  connect-src 'self' https://api.themoviedb.org https://wsrv.nl https://image.tmdb.org;
-  frame-src 'self' https://www.youtube.com https://player.vimeo.com https://vidsrc.to https://vidsrc.xyz https://vidsrc.me https://2embed.cc https://player.videasy.net;
+  connect-src 'self' https://api.themoviedb.org https://wsrv.nl https://image.tmdb.org https://www.youtube.com https://www.youtube-nocookie.com https://*.google.com;
+  frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://vidsrc.to https://vidsrc.xyz https://vidsrc.me https://2embed.cc https://player.videasy.net;
   frame-ancestors 'none';
   base-uri 'self';
   form-action 'self';
@@ -89,3 +89,5 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+import('@opennextjs/cloudflare').then(m => m.initOpenNextCloudflareForDev());

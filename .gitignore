@@ -46,3 +46,15 @@ __pycache__/
 *.pyc
 *.pyo
 
+
+# OpenNext
+.open-next
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+
+# scratch test files
+vidlink_*
+

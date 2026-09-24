@@ -52,9 +52,84 @@ export function MediaDetailView({
   const [activeSeason, setActiveSeason] = useState(initialSeason);
   const [activeEpisode, setActiveEpisode] = useState(initialEpisode);
   const [muted, setMuted] = useState(true);
+  const [videoReady, setVideoReady] = useState(false);
+  const [videoError, setVideoError] = useState(false);
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const episodesRef = useRef<HTMLDivElement>(null);
   const similarRef = useRef<HTMLDivElement>(null);
+
+  const trailer =
+    details.videos?.results?.find(
+      (v) => v.site === "YouTube" && v.type === "Trailer" && v.official
+    ) ||
+    details.videos?.results?.find(
+      (v) => v.site === "YouTube" && v.type === "Trailer"
+    ) ||
+    details.videos?.results?.find(
+      (v) => v.site === "YouTube" && (v.type === "Teaser" || v.type === "Clip")
+    ) ||
+    details.videos?.results?.find((v) => v.site === "YouTube");
+  const trailerKey = trailer?.key;
+
+  // Listen to YouTube postMessage events for ready / error states
+  React.useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (typeof e.origin === "string" && !e.origin.includes("youtube")) return;
+      try {
+        const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+        if (data?.event === "onReady" || data?.info === 1) {
+          setVideoReady(true);
+          iframeRef.current?.contentWindow?.postMessage(
+            JSON.stringify({ event: "command", func: "mute", args: [] }),
+            "*"
+          );
+          iframeRef.current?.contentWindow?.postMessage(
+            JSON.stringify({ event: "command", func: "playVideo", args: [] }),
+            "*"
+          );
+        } else if (data?.event === "onError") {
+          setVideoError(true);
+        }
+      } catch {}
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
+  const toggleAudio = () => {
+    const nextMuted = !muted;
+    setMuted(nextMuted);
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({
+          event: "command",
+          func: nextMuted ? "mute" : "unMute",
+          args: [],
+        }),
+        "*"
+      );
+      if (!nextMuted) {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({
+            event: "command",
+            func: "setVolume",
+            args: [100],
+          }),
+          "*"
+        );
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({
+            event: "command",
+            func: "playVideo",
+            args: [],
+          }),
+          "*"
+        );
+      }
+    }
+  };
 
   const handleStartPlay = (season = 1, episode = 1) => {
     setActiveSeason(season);
@@ -113,16 +188,6 @@ export function MediaDetailView({
       : details.similar?.results || []
   ).filter((i) => i.backdrop_path || i.poster_path);
 
-  const trailer =
-    details.videos?.results?.find(
-      (v) => v.site === "YouTube" && v.type === "Trailer" && v.official
-    ) ||
-    details.videos?.results?.find(
-      (v) => v.site === "YouTube" && (v.type === "Trailer" || v.type === "Teaser")
-    ) ||
-    details.videos?.results?.find((v) => v.site === "YouTube");
-  const trailerKey = trailer?.key;
-
   if (isPlaying) {
     return (
       <VideoPlayerView
@@ -139,19 +204,8 @@ export function MediaDetailView({
     <div className="min-h-screen pb-20">
       {/* Top Hero Showcase */}
       <div className="relative h-[80vh] min-h-[540px] max-h-[820px] w-full overflow-hidden bg-black">
-        {/* Background Trailer Video or High-Res Backdrop Image */}
-        {trailerKey ? (
-          <div className="absolute inset-0 h-full w-full overflow-hidden pointer-events-none">
-            <iframe
-              key={`trailer-${trailerKey}-${muted}`}
-              src={`https://www.youtube-nocookie.com/embed/${trailerKey}?autoplay=1&mute=${
-                muted ? 1 : 0
-              }&controls=0&loop=1&playlist=${trailerKey}&playsinline=1&rel=0&disablekb=1&modestbranding=1&iv_load_policy=3`}
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[160%] w-[160%] min-w-full min-h-full border-0 opacity-85 pointer-events-none"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            />
-          </div>
-        ) : details.backdrop_path ? (
+        {/* Baseline High-Res Backdrop Image (instant display, no black screen) */}
+        {details.backdrop_path && (
           <Image
             src={wsrvUrl(backdropUrl(details.backdrop_path, "original"), 85)}
             alt={title}
@@ -160,7 +214,24 @@ export function MediaDetailView({
             className="object-cover object-top"
             unoptimized
           />
-        ) : null}
+        )}
+
+        {/* Background Trailer Video */}
+        {trailerKey && !videoError && (
+          <div className="absolute inset-0 h-full w-full overflow-hidden pointer-events-none">
+            <iframe
+              ref={iframeRef}
+              src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&controls=0&loop=1&playlist=${trailerKey}&playsinline=1&rel=0&enablejsapi=1&disablekb=1&modestbranding=1&iv_load_policy=3`}
+              title={`${title} Background Trailer`}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              onLoad={() => setVideoReady(true)}
+              onError={() => setVideoError(true)}
+              className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] h-[56.25vw] min-h-[100%] min-w-[177.78vh] scale-125 border-0 pointer-events-none transition-opacity duration-1000 ${
+                videoReady ? "opacity-80" : "opacity-0"
+              }`}
+            />
+          </div>
+        )}
 
         {/* Gradients */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#060608] via-[#060608]/40 to-transparent" />
@@ -179,11 +250,11 @@ export function MediaDetailView({
           </button>
 
           {/* Audio Mute Toggle */}
-          {trailerKey && (
+          {trailerKey && !videoError && (
             <button
-              onClick={() => setMuted(!muted)}
-              aria-label="Toggle Audio"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-all hover:bg-white hover:text-black"
+              onClick={toggleAudio}
+              aria-label={muted ? "Unmute audio" : "Mute audio"}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-all hover:bg-white hover:text-black hover:scale-105 active:scale-95"
             >
               {muted ? (
                 <VolumeX className="h-4 w-4" />
