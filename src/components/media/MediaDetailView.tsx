@@ -51,6 +51,41 @@ export function MediaDetailView({
   const [isPlaying, setIsPlaying] = useState(initialPlay);
   const [activeSeason, setActiveSeason] = useState(initialSeason);
   const [activeEpisode, setActiveEpisode] = useState(initialEpisode);
+
+  // Synchronize state when incoming props change
+  React.useEffect(() => {
+    if (initialPlay !== undefined) {
+      setIsPlaying(initialPlay);
+    }
+  }, [initialPlay]);
+
+  React.useEffect(() => {
+    if (initialSeason !== undefined) {
+      setActiveSeason(initialSeason);
+    }
+  }, [initialSeason]);
+
+  React.useEffect(() => {
+    if (initialEpisode !== undefined) {
+      setActiveEpisode(initialEpisode);
+    }
+  }, [initialEpisode]);
+
+  // Synchronize on browser history navigation (popstate)
+  React.useEffect(() => {
+    const handlePopState = () => {
+      const sp = new URLSearchParams(window.location.search);
+      const play = sp.get("play") === "true";
+      const s = sp.get("season");
+      const e = sp.get("episode");
+      setIsPlaying(play);
+      if (s) setActiveSeason(Number(s));
+      if (e) setActiveEpisode(Number(e));
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
   const [muted, setMuted] = useState(true);
   const [videoReady, setVideoReady] = useState(false);
   const [videoError, setVideoError] = useState(false);
@@ -396,7 +431,11 @@ export function MediaDetailView({
         {/* TV Show Seasons & Episodes */}
         {type === "tv" && details.seasons && (
           <div ref={episodesRef}>
-            <SeasonBrowser tvId={details.id} seasons={details.seasons} />
+            <SeasonBrowser
+              tvId={details.id}
+              seasons={details.seasons}
+              onPlayEpisode={(s, e) => handleStartPlay(s, e)}
+            />
           </div>
         )}
 

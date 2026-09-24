@@ -111,10 +111,10 @@ export function PersonDetailView({ person }: PersonDetailViewProps) {
         <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#e50914]/10 rounded-full blur-[140px] pointer-events-none" />
 
         {/* Hero Actor Profile Section */}
-        <div className="mx-auto max-w-[1360px] px-4 sm:px-6 md:px-10 pt-8 sm:pt-10 md:pt-12 pb-10">
+        <div className="mx-auto max-w-[1360px] px-4 sm:px-6 md:px-10 pt-28 sm:pt-36 md:pt-40 lg:pt-44 pb-10">
           <div className="flex flex-col md:flex-row gap-8 lg:gap-12 items-start">
             {/* Profile Avatar Card */}
-            <div className="flex-shrink-0 w-full sm:w-64 md:w-72 lg:w-80 mx-auto md:mx-0">
+            <div className="flex-shrink-0 w-48 sm:w-52 md:w-56 lg:w-64 mx-auto md:mx-0">
               <div className="relative aspect-[3/4] w-full rounded-2xl overflow-hidden bg-[#14141c] border border-white/10 shadow-2xl shadow-black/80 group">
                 {person.profile_path ? (
                   <Image
@@ -122,7 +122,7 @@ export function PersonDetailView({ person }: PersonDetailViewProps) {
                     alt={person.name}
                     fill
                     priority
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 288px, 320px"
+                    sizes="(max-width: 640px) 192px, (max-width: 1024px) 224px, 256px"
                     className="object-cover object-top transition-transform duration-500 group-hover:scale-105"
                     unoptimized
                   />

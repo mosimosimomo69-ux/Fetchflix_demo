@@ -12,6 +12,7 @@ import {
   Clock,
   Calendar,
   Film,
+  Play,
 } from "lucide-react";
 import type { Episode, SeasonSummary } from "@/lib/api/tmdb";
 import { stillUrl, wsrvUrl } from "@/lib/api/tmdb";
@@ -19,6 +20,7 @@ import { stillUrl, wsrvUrl } from "@/lib/api/tmdb";
 interface SeasonBrowserProps {
   tvId: number;
   seasons: SeasonSummary[];
+  onPlayEpisode?: (season: number, episode: number) => void;
 }
 
 function getReleaseStatus(airDate?: string | null) {
@@ -65,7 +67,7 @@ function getReleaseStatus(airDate?: string | null) {
   };
 }
 
-export function SeasonBrowser({ tvId, seasons }: SeasonBrowserProps) {
+export function SeasonBrowser({ tvId, seasons, onPlayEpisode }: SeasonBrowserProps) {
   const valid = seasons.filter((s) => s.season_number > 0 && s.episode_count > 0);
   const [selected, setSelected] = useState(valid[0]?.season_number ?? 1);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
@@ -318,12 +320,19 @@ export function SeasonBrowser({ tvId, seasons }: SeasonBrowserProps) {
                 <Link
                   key={ep.id}
                   href={`/tv/${tvId}?play=true&season=${ep.season_number}&episode=${ep.episode_number}`}
-                  className="group relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4.5 rounded-xl border border-white/[0.06] bg-[#0c0c14]/90 p-3 sm:p-3.5 md:p-4 transition-all hover:border-white/20 hover:bg-[#12121c] shadow-md"
+                  onClick={(e) => {
+                    if (onPlayEpisode) {
+                      e.preventDefault();
+                      onPlayEpisode(ep.season_number, ep.episode_number);
+                    }
+                  }}
+                  className="group relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4.5 rounded-xl border border-white/[0.06] bg-[#0c0c14]/90 p-3 sm:p-3.5 md:p-4 transition-all hover:border-[#e50914]/40 hover:bg-[#12121c] shadow-md cursor-pointer"
+                  title={`Play Season ${ep.season_number} Episode ${ep.episode_number}: ${ep.name || ""}`}
                 >
                   {cardContent}
-                  {/* Right Side: Download Action Icon */}
-                  <div className="hidden sm:flex shrink-0 pr-2 text-white/40 group-hover:text-white transition-colors">
-                    <Download className="h-5 w-5" />
+                  {/* Right Side: Play Action Button */}
+                  <div className="hidden sm:flex shrink-0 items-center justify-center h-10 w-10 rounded-full bg-white/10 group-hover:bg-[#e50914] text-white transition-all transform group-hover:scale-105 shadow-md">
+                    <Play className="h-4 w-4 fill-white ml-0.5" />
                   </div>
                 </Link>
               );

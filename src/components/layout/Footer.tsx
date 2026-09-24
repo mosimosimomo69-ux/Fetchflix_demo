@@ -8,7 +8,12 @@ import { usePathname } from "next/navigation";
 export function Footer() {
   const pathname = usePathname();
 
-  if (pathname.startsWith("/watch")) {
+  const isHidden =
+    pathname.startsWith("/watch") ||
+    (pathname.startsWith("/movie/") && pathname !== "/movie") ||
+    (pathname.startsWith("/tv/") && pathname !== "/tv");
+
+  if (isHidden) {
     return null;
   }
 

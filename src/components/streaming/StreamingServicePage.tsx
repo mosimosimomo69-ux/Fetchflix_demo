@@ -76,10 +76,16 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
   const [genreOpen, setGenreOpen] = useState(false);
   const [genreSearch, setGenreSearch] = useState("");
 
-  const countryDropdownRef = useRef<HTMLDivElement>(null);
-  const genreDropdownRef = useRef<HTMLDivElement>(null);
-  const countrySearchInputRef = useRef<HTMLInputElement>(null);
-  const genreSearchInputRef = useRef<HTMLInputElement>(null);
+  const bannerCountryDropdownRef = useRef<HTMLDivElement>(null);
+  const stickyCountryDropdownRef = useRef<HTMLDivElement>(null);
+  const bannerGenreDropdownRef = useRef<HTMLDivElement>(null);
+  const stickyGenreDropdownRef = useRef<HTMLDivElement>(null);
+
+  const bannerCountrySearchInputRef = useRef<HTMLInputElement>(null);
+  const stickyCountrySearchInputRef = useRef<HTMLInputElement>(null);
+  const bannerGenreSearchInputRef = useRef<HTMLInputElement>(null);
+  const stickyGenreSearchInputRef = useRef<HTMLInputElement>(null);
+
   const bannerToolbarRef = useRef<HTMLDivElement>(null);
 
   const selectedCountry =
@@ -179,17 +185,19 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        countryDropdownRef.current &&
-        !countryDropdownRef.current.contains(e.target as Node)
-      ) {
+      const target = e.target as Node;
+      const insideCountry =
+        (bannerCountryDropdownRef.current && bannerCountryDropdownRef.current.contains(target)) ||
+        (stickyCountryDropdownRef.current && stickyCountryDropdownRef.current.contains(target));
+      if (!insideCountry) {
         setCountryOpen(false);
         setCountrySearch("");
       }
-      if (
-        genreDropdownRef.current &&
-        !genreDropdownRef.current.contains(e.target as Node)
-      ) {
+
+      const insideGenre =
+        (bannerGenreDropdownRef.current && bannerGenreDropdownRef.current.contains(target)) ||
+        (stickyGenreDropdownRef.current && stickyGenreDropdownRef.current.contains(target));
+      if (!insideGenre) {
         setGenreOpen(false);
         setGenreSearch("");
       }
@@ -199,16 +207,35 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
   }, []);
 
   useEffect(() => {
-    if (countryOpen && countrySearchInputRef.current) {
-      countrySearchInputRef.current.focus();
+    if (countryOpen) {
+      const timer = setTimeout(() => {
+        const input = isScrolled
+          ? stickyCountrySearchInputRef.current
+          : bannerCountrySearchInputRef.current;
+        input?.focus({ preventScroll: true });
+      }, 30);
+      return () => clearTimeout(timer);
     }
-  }, [countryOpen]);
+  }, [countryOpen, isScrolled]);
 
   useEffect(() => {
-    if (genreOpen && genreSearchInputRef.current) {
-      genreSearchInputRef.current.focus();
+    if (genreOpen) {
+      const timer = setTimeout(() => {
+        const input = isScrolled
+          ? stickyGenreSearchInputRef.current
+          : bannerGenreSearchInputRef.current;
+        input?.focus({ preventScroll: true });
+      }, 30);
+      return () => clearTimeout(timer);
     }
-  }, [genreOpen]);
+  }, [genreOpen, isScrolled]);
+
+  useEffect(() => {
+    setCountryOpen(false);
+    setCountrySearch("");
+    setGenreOpen(false);
+    setGenreSearch("");
+  }, [isScrolled]);
 
   useEffect(() => {
     const el = bannerToolbarRef.current;
@@ -290,7 +317,7 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
         onMouseEnter={() => setIsHeroPaused(true)}
         onMouseLeave={() => setIsHeroPaused(false)}
       >
-        {loading ? (
+        {loading && bannerItems.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <Loader2
               className="h-10 w-10 animate-spin"
@@ -448,8 +475,9 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
               <div ref={bannerToolbarRef} className="mt-3.5 sm:mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full pointer-events-auto">
                 <div className="flex items-center gap-2 flex-wrap">
                   {/* Country Dropdown */}
-                  <div className="relative" ref={countryDropdownRef}>
+                  <div className="relative" ref={bannerCountryDropdownRef}>
                     <button
+                      type="button"
                       onClick={() => {
                         setCountryOpen(!countryOpen);
                         setGenreOpen(false);
@@ -468,7 +496,7 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
                       />
                     </button>
 
-                    {countryOpen && (
+                    {!isScrolled && countryOpen && (
                       <div
                         className="absolute top-full left-0 mt-2 w-64 sm:w-72 rounded-xl border border-white/15 bg-[#14141c] shadow-2xl shadow-black/90 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
                       >
@@ -476,7 +504,7 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
                           <div className="relative">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
                             <input
-                              ref={countrySearchInputRef}
+                              ref={bannerCountrySearchInputRef}
                               type="text"
                               placeholder="Search countries..."
                               value={countrySearch}
@@ -489,6 +517,7 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
                           {filteredCountries.map((c) => (
                             <button
                               key={c.code}
+                              type="button"
                               onClick={() => handleCountrySelect(c.code)}
                               className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors ${
                                 country === c.code
@@ -519,8 +548,9 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
                   </div>
 
                   {/* Genres Dropdown */}
-                  <div className="relative" ref={genreDropdownRef}>
+                  <div className="relative" ref={bannerGenreDropdownRef}>
                     <button
+                      type="button"
                       onClick={() => {
                         setGenreOpen(!genreOpen);
                         setCountryOpen(false);
@@ -549,13 +579,13 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
                       />
                     </button>
 
-                    {genreOpen && (
+                    {!isScrolled && genreOpen && (
                       <div className="absolute top-full left-0 mt-2 w-56 sm:w-64 rounded-xl border border-white/15 bg-[#14141c] shadow-2xl shadow-black/90 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                         <div className="p-2 border-b border-white/10">
                           <div className="relative">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
                             <input
-                              ref={genreSearchInputRef}
+                              ref={bannerGenreSearchInputRef}
                               type="text"
                               placeholder="Search genres..."
                               value={genreSearch}
@@ -568,6 +598,7 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
                           {filteredGenres.map((g) => (
                             <button
                               key={g.id}
+                              type="button"
                               onClick={() => handleGenreSelect(g.id)}
                               className={`w-full flex items-center justify-between px-3 py-2 text-left text-xs transition-colors ${
                                 genre === g.id
@@ -670,8 +701,9 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
           {/* Left: Country & Genre Dropdowns */}
           <div className="flex items-center gap-2 flex-wrap">
             {/* Country Dropdown */}
-            <div className="relative">
+            <div className="relative" ref={stickyCountryDropdownRef}>
               <button
+                type="button"
                 onClick={() => {
                   setCountryOpen(!countryOpen);
                   setGenreOpen(false);
@@ -690,7 +722,7 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
                 />
               </button>
 
-              {countryOpen && (
+              {isScrolled && countryOpen && (
                 <div
                   className="absolute top-full left-0 mt-2 w-64 sm:w-72 rounded-xl border border-white/15 bg-[#14141c] shadow-2xl shadow-black/90 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
                 >
@@ -698,7 +730,7 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
                     <div className="relative">
                       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
                       <input
-                        ref={countrySearchInputRef}
+                        ref={stickyCountrySearchInputRef}
                         type="text"
                         placeholder="Search countries..."
                         value={countrySearch}
@@ -711,6 +743,7 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
                     {filteredCountries.map((c) => (
                       <button
                         key={c.code}
+                        type="button"
                         onClick={() => handleCountrySelect(c.code)}
                         className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors ${
                           country === c.code
@@ -741,8 +774,9 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
             </div>
 
             {/* Genres Dropdown */}
-            <div className="relative">
+            <div className="relative" ref={stickyGenreDropdownRef}>
               <button
+                type="button"
                 onClick={() => {
                   setGenreOpen(!genreOpen);
                   setCountryOpen(false);
@@ -771,13 +805,13 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
                 />
               </button>
 
-              {genreOpen && (
+              {isScrolled && genreOpen && (
                 <div className="absolute top-full left-0 mt-2 w-56 sm:w-64 rounded-xl border border-white/15 bg-[#14141c] shadow-2xl shadow-black/90 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                   <div className="p-2 border-b border-white/10">
                     <div className="relative">
                       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
                       <input
-                        ref={genreSearchInputRef}
+                        ref={stickyGenreSearchInputRef}
                         type="text"
                         placeholder="Search genres..."
                         value={genreSearch}
@@ -790,6 +824,7 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
                     {filteredGenres.map((g) => (
                       <button
                         key={g.id}
+                        type="button"
                         onClick={() => handleGenreSelect(g.id)}
                         className={`w-full flex items-center justify-between px-3 py-2 text-left text-xs transition-colors ${
                           genre === g.id
@@ -861,18 +896,20 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
 
       {/* Content */}
       <div className="relative z-10 mx-auto space-y-8 sm:space-y-10 pt-4 sm:pt-6 pb-8">
-        {/* Loading */}
-        {loading && (
+        {/* Initial Loading (first load when no content exists yet) */}
+        {loading && categories.length === 0 && top10.length === 0 ? (
           <div className="flex items-center justify-center py-20">
             <Loader2
               className="h-8 w-8 animate-spin"
               style={{ color: service.color }}
             />
           </div>
-        )}
-
-        {!loading && (
-          <>
+        ) : (
+          <div
+            className={`transition-opacity duration-300 ${
+              loading ? "opacity-40 pointer-events-none" : "opacity-100"
+            }`}
+          >
             {/* Top 10 Row */}
             {top10.length > 0 && (
               <NetflixTop10Row
@@ -925,7 +962,7 @@ export function StreamingServicePage({ service }: StreamingServicePageProps) {
                 </p>
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
     </div>
