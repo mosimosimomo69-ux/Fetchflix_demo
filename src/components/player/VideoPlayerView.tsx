@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   ChevronDown,
@@ -29,15 +28,25 @@ export function VideoPlayerView({
   const router = useRouter();
   const { addToHistory } = useAuth();
 
-  // State: selected server (default: vidlink) & iframe refresh counter
+  // State: selected server (default: vidking or persisted preference)
   const [selectedServer, setSelectedServer] = useState<string>("vidking");
+  const [isIframeLoading, setIsIframeLoading] = useState<boolean>(true);
   const [isServerMenuOpen, setIsServerMenuOpen] = useState<boolean>(false);
   const [showOverlay, setShowOverlay] = useState<boolean>(true);
   const [refreshKey, setRefreshKey] = useState<number>(0);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Restore preferred server from localStorage if set
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("fetchflix_player_server");
+      if (saved && VIDEO_SERVERS.some((s) => s.id === saved)) {
+        setSelectedServer(saved);
+      }
+    } catch {}
+  }, []);
 
   // Save to history on mount
   useEffect(() => {
@@ -84,11 +93,21 @@ export function VideoPlayerView({
   // Reload / Refresh Player
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
+    setIsIframeLoading(true);
     setRefreshKey((prev) => prev + 1);
     setTimeout(() => {
       setIsRefreshing(false);
     }, 700);
   }, []);
+
+  const handleSelectServer = (serverId: string) => {
+    setSelectedServer(serverId);
+    setIsServerMenuOpen(false);
+    setIsIframeLoading(true);
+    try {
+      localStorage.setItem("fetchflix_player_server", serverId);
+    } catch {}
+  };
 
   // Keyboard shortcut listener (Escape to exit, R to refresh)
   useEffect(() => {
@@ -133,20 +152,6 @@ export function VideoPlayerView({
     };
   }, [handleMouseMove]);
 
-  // Track fullscreen mode to hide watermark when in full screen
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(Boolean(document.fullscreenElement));
-    };
-
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
-    };
-  }, []);
-
   // Generate Embed URL depending on selected server
   const getEmbedUrl = (serverId: string) => {
     const id = details.id;
@@ -180,8 +185,8 @@ export function VideoPlayerView({
           : `https://nhdapi.com/movie/${id}?autoPlay=true`;
       case "vidfast":
         return type === "tv"
-          ? `https://vidfast.net/embed/tv/${id}/${season}/${episode}`
-          : `https://vidfast.net/embed/movie/${id}`;
+          ? `https://vidfast.pro/tv/${id}/${season}/${episode}`
+          : `https://vidfast.pro/movie/${id}`;
       case "vidlink":
         return type === "tv"
           ? `https://vidlink.pro/tv/${id}/${season}/${episode}?primaryColor=e50914&secondaryColor=e50914&autoplay=true`
@@ -200,8 +205,8 @@ export function VideoPlayerView({
           : `https://vidrock.to/movie/${id}`;
       case "movies111":
         return type === "tv"
-          ? `https://player.vidlove.cc/embed/tv/${id}/${season}/${episode}`
-          : `https://player.vidlove.cc/embed/movie/${id}`;
+          ? `https://vidnest.fun/tv/${id}/${season}/${episode}`
+          : `https://vidnest.fun/movie/${id}`;
       case "nontongo":
         return type === "tv"
           ? `https://www.nontongo.win/embed/tv/${id}/${season}/${episode}`
@@ -271,171 +276,159 @@ export function VideoPlayerView({
         key={`${selectedServer}-${type}-${details.id}-${initialSeason}-${initialEpisode}-${refreshKey}`}
         src={embedUrl}
         className="h-full w-full border-0 bg-black"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+        allow="accelerometer; autoplay *; clipboard-write; encrypted-media *; gyroscope; picture-in-picture *; web-share; fullscreen *"
         allowFullScreen
+        loading="eager"
         referrerPolicy="no-referrer-when-downgrade"
+        onLoad={() => setIsIframeLoading(false)}
       />
 
-      {/* 2. Top Header Controls & FetchFlix Watermark */}
-      <div className="absolute top-0 left-0 right-0 z-40 pointer-events-none">
-        {/* Background gradient (fades out when controls hide) */}
-        <div
-          className={`absolute inset-0 bg-gradient-to-b from-black/95 via-black/50 to-transparent pb-16 transition-opacity duration-300 pointer-events-none ${
-            showOverlay || isServerMenuOpen ? "opacity-100" : "opacity-0"
-          }`}
-        />
-
-        <div className="relative px-4 py-4 sm:px-6 sm:py-5 flex items-center justify-between">
-          {/* Left: Close Button + Server Dropdown (Completely disappears when video is playing/idle) */}
-          <div
-            className={`flex items-center gap-2 sm:gap-2.5 transition-all duration-300 ${
-              showOverlay || isServerMenuOpen
-                ? "opacity-100 pointer-events-auto translate-y-0"
-                : "opacity-0 pointer-events-none -translate-y-1.5"
-            }`}
-          >
-            {/* 1. Sleek Liquid Glass Close Button */}
-            <button
-              onClick={handleBack}
-              aria-label="Close player (Esc)"
-              title="Close player (Esc)"
-              className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-xl transition-all hover:bg-black/85 hover:text-white hover:scale-105 active:scale-95 shadow-xl border border-white/25 cursor-pointer"
-            >
-              <X className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
-            </button>
-
-            {/* 2. Server Selection Dropdown (Left, next to close button) */}
-            <div className="relative">
-              <button
-                onClick={() => setIsServerMenuOpen((prev) => !prev)}
-                aria-expanded={isServerMenuOpen}
-                title="Select streaming server"
-                className={`flex items-center gap-1.5 sm:gap-2 rounded-full px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs sm:text-sm font-medium backdrop-blur-xl transition-all shadow-xl border cursor-pointer ${
-                  isServerMenuOpen
-                    ? "bg-[#e50914]/35 text-white border-[#e50914]/70 shadow-[0_0_16px_rgba(229,9,20,0.35)]"
-                    : "bg-white/15 text-white border-white/25 hover:bg-black/85 hover:border-white/15 hover:text-white/95"
-                }`}
-              >
-                <span className="font-semibold truncate max-w-[105px] sm:max-w-[140px]">
-                  {currentServerObj.name.replace(" (Default)", "")}
-                </span>
-                <ChevronDown
-                  className={`h-3.5 w-3.5 transition-transform duration-200 text-zinc-300 ${
-                    isServerMenuOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-
-              {/* Server Selection Dropdown - Liquid Glass Style */}
-              {isServerMenuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40 bg-transparent"
-                    onClick={() => setIsServerMenuOpen(false)}
-                  />
-                  <div className="absolute left-0 top-full mt-2.5 z-50 w-72 sm:w-80 rounded-2xl bg-black/45 backdrop-blur-2xl border border-white/20 pt-2.5 pb-2 pl-2.5 pr-0 shadow-[0_16px_48px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
-                    {/* Header with Title and Liquid Glass Outlined Refresh Button */}
-                    <div className="flex items-center justify-between px-1.5 py-1.5 border-b border-white/15 mb-2 mr-2.5">
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-300">
-                        Select Server
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRefresh();
-                        }}
-                        aria-label="Refresh player stream"
-                        title="Reload stream (R)"
-                        className="rounded-lg border border-white/20 hover:border-white/10 bg-white/15 hover:bg-black/85 px-2.5 py-1 text-xs font-medium text-white transition-all cursor-pointer active:scale-95 backdrop-blur-md shadow-sm"
-                      >
-                        {isRefreshing ? "Refreshing..." : "Refresh"}
-                      </button>
-                    </div>
-
-                    <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1 pb-1 scrollbar-thin">
-                      {VIDEO_SERVERS.map((server) => {
-                        const isSelected = selectedServer === server.id;
-                        return (
-                          <button
-                            key={server.id}
-                            onClick={() => {
-                              setSelectedServer(server.id);
-                              setIsServerMenuOpen(false);
-                            }}
-                            className={`flex w-full items-start justify-between rounded-xl p-2.5 text-left transition-all cursor-pointer backdrop-blur-md ${
-                              isSelected
-                                ? "bg-[#e50914]/35 text-white border border-[#e50914]/70 shadow-[0_0_16px_rgba(229,9,20,0.35)]"
-                                : "bg-white/10 border border-white/15 text-white shadow-sm hover:bg-black/85 hover:border-white/10 hover:text-white/90"
-                            }`}
-                          >
-                            <div className="space-y-0.5 pr-2">
-                              <div className="flex items-center gap-1.5 text-xs font-semibold">
-                                <span className={isSelected ? "text-white font-bold" : "text-zinc-100"}>
-                                  {server.name}
-                                </span>
-                                {server.id === "vidking" && (
-                                  <span className="rounded border border-red-400/70 bg-red-500/20 px-1.5 py-0.5 text-[9px] font-bold text-red-300">
-                                    MAIN
-                                  </span>
-                                )}
-                                {server.is4k && (
-                                  <span className="rounded border border-amber-400/70 bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">
-                                    4K
-                                  </span>
-                                )}
-                                {"isMultiAudio" in server && Boolean((server as { isMultiAudio?: boolean }).isMultiAudio) && (
-                                  <span className="rounded border border-emerald-400/70 bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold text-emerald-300">
-                                    MULTI-AUDIO
-                                  </span>
-                                )}
-                              </div>
-                              <p className={`text-[11px] leading-tight ${isSelected ? "text-zinc-200" : "text-zinc-400"}`}>
-                                {server.desc}
-                              </p>
-                            </div>
-                            {isSelected && (
-                              <span className="text-[11px] font-bold text-[#e50914] mt-0.5">
-                                Active
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </>
-              )}
+      {/* 2. Buffering / Connecting Feedback Overlay */}
+      {isIframeLoading && (
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm pointer-events-none transition-opacity duration-300">
+          <div className="flex flex-col items-center max-w-sm px-6 text-center space-y-4 animate-in fade-in duration-200">
+            <div className="relative flex items-center justify-center h-14 w-14">
+              <div className="absolute inset-0 rounded-full border-2 border-red-600/30 animate-ping opacity-35" />
+              <div className="h-10 w-10 rounded-full border-2 border-t-red-600 border-r-transparent border-b-white/20 border-l-transparent animate-spin" />
             </div>
-          </div>
 
-          {/* Right: FetchFlix Logo (Partially disappears when video is playing; hover makes it and left controls reappear; click goes Home) */}
-          <div
-            className={`transition-all duration-500 pointer-events-auto ${
-              isFullscreen
-                ? "opacity-0 scale-95 pointer-events-none"
-                : showOverlay || isServerMenuOpen
-                ? "opacity-100 scale-100"
-                : "opacity-25 hover:opacity-100 scale-100"
-            }`}
-            onMouseEnter={() => {
-              setShowOverlay(true);
-            }}
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-white tracking-wide">
+                Connecting to {currentServerObj.name.replace(" (Default)", "")}...
+              </p>
+              <p className="text-xs text-zinc-400">
+                Buffering high-speed stream for {details.title || details.name || "video"}
+              </p>
+            </div>
+
+            <p className="text-[11px] text-zinc-400 bg-white/10 border border-white/15 rounded-full px-3 py-1">
+              Tip: Server 2 (Peachify) & Server 4 (VidNest) offer instant playback
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Top Header Controls (Completely disappears when video is playing/idle, reappears on mouse move) */}
+      <div
+        className={`absolute top-0 left-0 right-0 z-40 transition-all duration-300 ${
+          showOverlay || isServerMenuOpen
+            ? "opacity-100 pointer-events-auto translate-y-0"
+            : "opacity-0 pointer-events-none -translate-y-1.5"
+        }`}
+        onMouseEnter={() => setShowOverlay(true)}
+      >
+        {/* Background gradient (fades out when controls hide) */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/95 via-black/50 to-transparent pb-16 pointer-events-none" />
+
+        <div className="relative px-4 py-4 sm:px-6 sm:py-5 flex items-center justify-start gap-2 sm:gap-2.5">
+          {/* Sleek Liquid Glass Close Button */}
+          <button
+            onClick={handleBack}
+            aria-label="Close player (Esc)"
+            title="Close player (Esc)"
+            className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-xl transition-all hover:bg-black/85 hover:text-white hover:scale-105 active:scale-95 shadow-xl border border-white/25 cursor-pointer"
           >
+            <X className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
+          </button>
+
+          {/* Server Selection Dropdown */}
+          <div className="relative">
             <button
-              onClick={() => router.push("/")}
-              aria-label="Go to Fetchflix Home"
-              title="Go to Fetchflix Home"
-              className="relative h-6 sm:h-7 w-20 sm:w-24 drop-shadow-md cursor-pointer transition-transform hover:scale-105 active:scale-95 shrink-0 flex items-center justify-end"
+              onClick={() => setIsServerMenuOpen((prev) => !prev)}
+              aria-expanded={isServerMenuOpen}
+              title="Select streaming server"
+              className={`flex items-center gap-1.5 sm:gap-2 rounded-full px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs sm:text-sm font-medium backdrop-blur-xl transition-all shadow-xl border cursor-pointer ${
+                isServerMenuOpen
+                  ? "bg-[#e50914]/35 text-white border-[#e50914]/70 shadow-[0_0_16px_rgba(229,9,20,0.35)]"
+                  : "bg-white/15 text-white border-white/25 hover:bg-black/85 hover:border-white/15 hover:text-white/95"
+              }`}
             >
-              <Image
-                src="/fetchflix.png"
-                alt="Fetchflix"
-                fill
-                priority
-                className="object-contain object-right"
-                unoptimized
+              <span className="font-semibold truncate max-w-[105px] sm:max-w-[140px]">
+                {currentServerObj.name.replace(" (Default)", "")}
+              </span>
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform duration-200 text-zinc-300 ${
+                  isServerMenuOpen ? "rotate-180" : ""
+                }`}
               />
             </button>
+
+            {/* Server Selection Dropdown - Liquid Glass Style */}
+            {isServerMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40 bg-transparent"
+                  onClick={() => setIsServerMenuOpen(false)}
+                />
+                <div className="absolute left-0 top-full mt-2.5 z-50 w-72 sm:w-80 rounded-2xl bg-black/45 backdrop-blur-2xl border border-white/20 p-2.5 shadow-[0_16px_48px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in-95 duration-150">
+                  {/* Header with Title and Liquid Glass Outlined Refresh Button */}
+                  <div className="flex items-center justify-between px-2 py-1.5 border-b border-white/15 mb-2">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-300">
+                      Select Server
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRefresh();
+                      }}
+                      aria-label="Refresh player stream"
+                      title="Reload stream (R)"
+                      className="rounded-lg border border-white/20 hover:border-white/10 bg-white/15 hover:bg-black/85 px-2.5 py-1 text-xs font-medium text-white transition-all cursor-pointer active:scale-95 backdrop-blur-md shadow-sm"
+                    >
+                      {isRefreshing ? "Refreshing..." : "Refresh"}
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-0.5">
+                    {VIDEO_SERVERS.map((server) => {
+                      const isSelected = selectedServer === server.id;
+                      return (
+                        <button
+                          key={server.id}
+                          onClick={() => handleSelectServer(server.id)}
+                          className={`flex w-full items-start justify-between rounded-xl p-2.5 text-left transition-all cursor-pointer backdrop-blur-md ${
+                            isSelected
+                              ? "bg-[#e50914]/35 text-white border border-[#e50914]/70 shadow-[0_0_16px_rgba(229,9,20,0.35)]"
+                              : "bg-white/10 border border-white/15 text-white shadow-sm hover:bg-black/85 hover:border-white/10 hover:text-white/90"
+                          }`}
+                        >
+                          <div className="space-y-0.5 pr-2">
+                            <div className="flex items-center gap-1.5 text-xs font-semibold">
+                              <span className={isSelected ? "text-white font-bold" : "text-zinc-100"}>
+                                {server.name}
+                              </span>
+                              {server.id === "vidking" && (
+                                <span className="rounded border border-red-400/70 bg-red-500/20 px-1.5 py-0.5 text-[9px] font-bold text-red-300">
+                                  MAIN
+                                </span>
+                              )}
+                              {server.is4k && (
+                                <span className="rounded border border-amber-400/70 bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">
+                                  4K
+                                </span>
+                              )}
+                              {"isMultiAudio" in server && Boolean((server as { isMultiAudio?: boolean }).isMultiAudio) && (
+                                <span className="rounded border border-emerald-400/70 bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold text-emerald-300">
+                                  MULTI-AUDIO
+                                </span>
+                              )}
+                            </div>
+                            <p className={`text-[11px] leading-tight ${isSelected ? "text-zinc-200" : "text-zinc-400"}`}>
+                              {server.desc}
+                            </p>
+                          </div>
+                          {isSelected && (
+                            <span className="text-[11px] font-bold text-[#e50914] mt-0.5">
+                              Active
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

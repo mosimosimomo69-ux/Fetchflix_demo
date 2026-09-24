@@ -9,6 +9,10 @@ export function MobileDock() {
   const pathname = usePathname();
   const { openSearch } = useSearchModal();
 
+  if (pathname.startsWith("/watch")) {
+    return null;
+  }
+
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0c0c14]/95 backdrop-blur-xl md:hidden">
       <div className="flex items-center justify-around py-2">

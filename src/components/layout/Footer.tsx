@@ -1,8 +1,17 @@
+"use client";
+
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export function Footer() {
+  const pathname = usePathname();
+
+  if (pathname.startsWith("/watch")) {
+    return null;
+  }
+
   return (
     <footer className="mt-auto border-t border-white/5 py-12 pb-24 md:pb-12 bg-black/60">
       <div className="mx-auto max-w-7xl px-4 md:px-8 space-y-4">
