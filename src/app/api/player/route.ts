@@ -101,12 +101,12 @@ export async function GET(req: Request) {
       html = shieldScript + html;
     }
 
-    // 3. Strip specific known ad scripts from HTML
-    // VidNest ad chunk
-    html = html.replace(/<script src="\/_next\/static\/chunks\/47fb01a2314683e3\.js"[^>]*><\/script>/g, "");
-    html = html.replace(/"\/_next\/static\/chunks\/47fb01a2314683e3\.js",?/g, "");
-    // VidRock ad script
+    // 3. Strip and neutralize specific known ad scripts from HTML
+    // Neutralize VidNest popup ad chunk completely
+    html = html.replaceAll("/_next/static/chunks/47fb01a2314683e3.js", "data:text/javascript,/*neutralized*/");
+    // Strip and neutralize VidRock ad scripts
     html = html.replace(/<script[^>]*src="[^"]*aclib\.js"[^>]*><\/script>/gi, "");
+    html = html.replaceAll("/lib/aclib.js", "data:text/javascript,/*neutralized*/");
 
     return new Response(html, {
       status: 200,
