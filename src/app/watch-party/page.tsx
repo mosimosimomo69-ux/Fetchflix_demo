@@ -145,10 +145,11 @@ export default function WatchPartyPage() {
             {/* Video Player Embed */}
             <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black border border-white/10 shadow-2xl">
               <iframe
-                src="https://www.vidking.net/embed/movie/533535?color=e50914&autoPlay=true"
+                src="https://player.videasy.to/movie/533535"
                 className="h-full w-full border-0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 allowFullScreen
+                referrerPolicy="no-referrer-when-downgrade"
               />
             </div>
           </div>

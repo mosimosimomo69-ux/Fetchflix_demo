@@ -15,7 +15,7 @@ const ContentSecurityPolicy = `
   img-src 'self' data: blob: https://image.tmdb.org https://wsrv.nl https://i.ytimg.com https://*.youtube.com;
   media-src 'self' blob: https:;
   connect-src 'self' https://api.themoviedb.org https://wsrv.nl https://image.tmdb.org https://www.youtube.com https://www.youtube-nocookie.com https://*.google.com;
-  frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://vidsrc.to https://vidsrc.xyz https://vidsrc.me https://2embed.cc https://player.videasy.net;
+  frame-src 'self' blob: https: https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://*.videasy.to https://*.videasy.net https://*.vidlink.pro https://*.peachify.pro https://*.vidnest.fun https://*.vidrock.to https://*.smashystream.com https://*.nontongo.win https://*.vidsrc.to https://*.vidsrc.pm https://*.nxsha.space https://*.nhdapi.com https://*.vidlove.cc https://*.2embed.cc;
   frame-ancestors 'none';
   base-uri 'self';
   form-action 'self';

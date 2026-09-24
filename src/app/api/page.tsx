@@ -41,12 +41,12 @@ const ENDPOINTS = [
     },
   },
   {
-    name: "Vidking Player Embed",
+    name: "Vidking / Videasy Player Embed",
     method: "EMBED",
-    path: "https://www.vidking.net/embed/movie/{tmdbId}?color=e50914&autoPlay=true",
+    path: "https://player.videasy.to/movie/{tmdbId}",
     desc: "Direct iframe embed player with subtitle support and 4K capability.",
     sample: {
-      embed: "<iframe src='https://www.vidking.net/embed/movie/1084242' allowfullscreen />",
+      embed: "<iframe src='https://player.videasy.to/movie/1084242' allowfullscreen />",
     },
   },
 ];
