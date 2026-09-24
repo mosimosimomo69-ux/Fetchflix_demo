@@ -204,14 +204,16 @@ export function MediaDetailView({
     <div className="min-h-screen pb-20">
       {/* Top Hero Showcase */}
       <div className="relative h-[80vh] min-h-[540px] max-h-[820px] w-full overflow-hidden bg-black">
-        {/* Baseline High-Res Backdrop Image (instant display, no black screen) */}
+        {/* Baseline High-Res Backdrop Image (shows until video is ready, then fades out completely) */}
         {details.backdrop_path && (
           <Image
             src={wsrvUrl(backdropUrl(details.backdrop_path, "original"), 85)}
             alt={title}
             fill
             priority
-            className="object-cover object-top"
+            className={`object-cover object-top transition-opacity duration-700 ${
+              videoReady && !videoError ? "opacity-0 pointer-events-none" : "opacity-100"
+            }`}
             unoptimized
           />
         )}
@@ -227,17 +229,17 @@ export function MediaDetailView({
               referrerPolicy="strict-origin-when-cross-origin"
               onLoad={() => setVideoReady(true)}
               onError={() => setVideoError(true)}
-              className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] h-[56.25vw] min-h-[100%] min-w-[177.78vh] scale-125 border-0 pointer-events-none transition-opacity duration-1000 ${
-                videoReady ? "opacity-80" : "opacity-0"
+              className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] h-[56.25vw] min-h-[100%] min-w-[177.78vh] scale-125 border-0 pointer-events-none transition-opacity duration-700 ${
+                videoReady ? "opacity-100" : "opacity-0"
               }`}
             />
           </div>
         )}
 
         {/* Gradients */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#060608] via-[#060608]/40 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#060608] via-[#060608]/60 to-transparent w-full md:w-3/4" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent h-24" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#060608] via-[#060608]/30 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#060608]/85 via-[#060608]/30 to-transparent w-full md:w-1/2 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-transparent h-24 pointer-events-none" />
 
         {/* Top Control Bar */}
         <div className="absolute inset-x-0 top-0 z-20 mx-auto flex max-w-[1360px] items-center justify-between p-4 md:p-8">
