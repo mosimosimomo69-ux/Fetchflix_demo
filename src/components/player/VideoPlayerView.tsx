@@ -8,8 +8,13 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Check,
+  Search,
+  SkipForward,
+  Play,
 } from "lucide-react";
-import type { MediaDetails } from "@/lib/api/tmdb";
+import type { MediaDetails, Episode } from "@/lib/api/tmdb";
+import { stillUrl, backdropUrl, pickBestLogo, logoUrl } from "@/lib/api/tmdb";
 import { useAuth } from "@/context/AuthContext";
 import { VIDEO_SERVERS } from "@/lib/constants";
 
@@ -36,6 +41,15 @@ export function VideoPlayerView({
   const [currentSeason, setCurrentSeason] = useState<number>(initialSeason);
   const [currentEpisode, setCurrentEpisode] = useState<number>(initialEpisode);
   const [isEpisodeMenuOpen, setIsEpisodeMenuOpen] = useState<boolean>(false);
+  const [isEpisodeModalOpen, setIsEpisodeModalOpen] = useState<boolean>(false);
+  const [modalSeason, setModalSeason] = useState<number>(initialSeason);
+  const [seasonEpisodes, setSeasonEpisodes] = useState<Episode[]>([]);
+  const [isLoadingSeason, setIsLoadingSeason] = useState<boolean>(false);
+  const [isSeasonDropdownOpen, setIsSeasonDropdownOpen] = useState<boolean>(false);
+  const [episodeSearchQuery, setEpisodeSearchQuery] = useState<string>("");
+  const [autoplayNext, setAutoplayNext] = useState<boolean>(true);
+  const activeCardRef = useRef<HTMLDivElement | null>(null);
+
   const [isIframeLoading, setIsIframeLoading] = useState<boolean>(true);
   const [isServerMenuOpen, setIsServerMenuOpen] = useState<boolean>(false);
   const [showOverlay, setShowOverlay] = useState<boolean>(true);
@@ -47,6 +61,7 @@ export function VideoPlayerView({
 
   useEffect(() => {
     setCurrentSeason(initialSeason);
+    setModalSeason(initialSeason);
   }, [initialSeason]);
 
   useEffect(() => {
@@ -62,6 +77,54 @@ export function VideoPlayerView({
       }
     } catch {}
   }, []);
+
+  // Restore autoplay next preference
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("fetchflix_autoplay_next");
+      if (saved !== null) {
+        setAutoplayNext(saved === "true");
+      }
+    } catch {}
+  }, []);
+
+  const toggleAutoplayNext = () => {
+    setAutoplayNext((prev) => {
+      const nextVal = !prev;
+      try {
+        localStorage.setItem("fetchflix_autoplay_next", String(nextVal));
+      } catch {}
+      return nextVal;
+    });
+  };
+
+  // Fetch season episodes when modalSeason changes
+  useEffect(() => {
+    if (type !== "tv" || !details.id) return;
+    let isCancelled = false;
+    setIsLoadingSeason(true);
+
+    fetch(`/api/season?tvId=${details.id}&season=${modalSeason}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch season details");
+        return res.json();
+      })
+      .then((data) => {
+        if (!isCancelled && data?.episodes && Array.isArray(data.episodes)) {
+          setSeasonEpisodes(data.episodes);
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not load season details:", err);
+      })
+      .finally(() => {
+        if (!isCancelled) setIsLoadingSeason(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [type, details.id, modalSeason]);
 
   // Save to history on mount or episode change
   useEffect(() => {
@@ -98,17 +161,91 @@ export function VideoPlayerView({
   ]);
 
   // Valid seasons calculation for TV shows
-  const validSeasons = useMemo(
-    () => (details.seasons || []).filter((s) => s.season_number > 0 && s.episode_count > 0),
-    [details.seasons]
-  );
+  const validSeasons = useMemo(() => {
+    const filtered = (details.seasons || []).filter(
+      (s) => s.season_number > 0 && s.episode_count > 0
+    );
+    if (filtered.length > 0) return filtered;
+    return [
+      {
+        id: 1,
+        season_number: 1,
+        name: "Season 1",
+        episode_count: details.number_of_episodes || 10,
+        poster_path: null,
+      },
+    ];
+  }, [details.seasons, details.number_of_episodes]);
+
   const activeSeasonSummary =
-    validSeasons.find((s) => s.season_number === currentSeason) || validSeasons[0];
-  const maxEpisodes = activeSeasonSummary?.episode_count || 30;
+    validSeasons.find((s) => s.season_number === modalSeason) || validSeasons[0];
+  const maxEpisodesForSeason = activeSeasonSummary?.episode_count || 30;
+
+  const logoFile = useMemo(
+    () => pickBestLogo(details.images?.logos),
+    [details.images?.logos]
+  );
+
+  const episodesToDisplay: Episode[] = useMemo(() => {
+    let list: Episode[] = [];
+    if (seasonEpisodes.length > 0 && seasonEpisodes[0].season_number === modalSeason) {
+      list = seasonEpisodes;
+    } else {
+      list = Array.from({ length: maxEpisodesForSeason }, (_, i) => ({
+        id: i + 1,
+        name: `Episode ${i + 1}`,
+        overview: details.overview || "",
+        episode_number: i + 1,
+        season_number: modalSeason,
+        still_path: details.backdrop_path || details.poster_path || null,
+        runtime: details.episode_run_time?.[0] || 42,
+      }));
+    }
+
+    if (!episodeSearchQuery.trim()) {
+      return list;
+    }
+
+    const q = episodeSearchQuery.trim().toLowerCase();
+    return list.filter(
+      (ep) =>
+        ep.name.toLowerCase().includes(q) ||
+        String(ep.episode_number).includes(q) ||
+        (ep.overview && ep.overview.toLowerCase().includes(q))
+    );
+  }, [seasonEpisodes, modalSeason, maxEpisodesForSeason, details, episodeSearchQuery]);
+
+  const currentEpisodeObj = useMemo(() => {
+    if (seasonEpisodes.length > 0 && seasonEpisodes[0].season_number === currentSeason) {
+      const found = seasonEpisodes.find((ep) => ep.episode_number === currentEpisode);
+      if (found) return found;
+    }
+    return {
+      id: currentEpisode,
+      name: `Episode ${currentEpisode}`,
+      overview: details.overview || "",
+      episode_number: currentEpisode,
+      season_number: currentSeason,
+      still_path: details.backdrop_path || null,
+      runtime: details.episode_run_time?.[0] || 42,
+    };
+  }, [seasonEpisodes, currentEpisode, currentSeason, details]);
+
+  const formatRuntime = (mins?: number) => {
+    if (!mins || mins <= 0) mins = details.episode_run_time?.[0] || 42;
+    const hours = Math.floor(mins / 60);
+    const remaining = mins % 60;
+    if (hours > 0) {
+      return `${hours}h ${remaining > 0 ? `${remaining}m` : ""}`.trim();
+    }
+    return `0h ${mins}m`;
+  };
 
   const handleSelectEpisode = (seasonNum: number, episodeNum: number) => {
     setCurrentSeason(seasonNum);
     setCurrentEpisode(episodeNum);
+    setModalSeason(seasonNum);
+    setIsEpisodeModalOpen(false);
     setIsEpisodeMenuOpen(false);
     setIsIframeLoading(true);
     setRefreshKey((prev) => prev + 1);
@@ -121,6 +258,13 @@ export function VideoPlayerView({
       window.history.replaceState(null, "", url.toString());
     }
   };
+
+  // Auto-scroll active card into view when modal opens
+  useEffect(() => {
+    if (isEpisodeModalOpen && activeCardRef.current) {
+      activeCardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [isEpisodeModalOpen, modalSeason]);
 
   const handleBack = useCallback(() => {
     if (onClose) {
@@ -159,7 +303,9 @@ export function VideoPlayerView({
         return;
       }
       if (e.key === "Escape") {
-        if (isServerMenuOpen) {
+        if (isEpisodeModalOpen) {
+          setIsEpisodeModalOpen(false);
+        } else if (isServerMenuOpen) {
           setIsServerMenuOpen(false);
         } else if (isEpisodeMenuOpen) {
           setIsEpisodeMenuOpen(false);
@@ -173,18 +319,18 @@ export function VideoPlayerView({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleBack, isServerMenuOpen, isEpisodeMenuOpen, handleRefresh]);
+  }, [handleBack, isServerMenuOpen, isEpisodeMenuOpen, isEpisodeModalOpen, handleRefresh]);
 
   // Auto-hide top overlay header on inactivity
   const handleMouseMove = useCallback(() => {
     setShowOverlay(true);
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     hideTimerRef.current = setTimeout(() => {
-      if (!isServerMenuOpen && !isEpisodeMenuOpen) {
+      if (!isServerMenuOpen && !isEpisodeMenuOpen && !isEpisodeModalOpen) {
         setShowOverlay(false);
       }
     }, 3500);
-  }, [isServerMenuOpen, isEpisodeMenuOpen]);
+  }, [isServerMenuOpen, isEpisodeMenuOpen, isEpisodeModalOpen]);
 
   useEffect(() => {
     window.addEventListener("mousemove", handleMouseMove);
@@ -548,93 +694,39 @@ export function VideoPlayerView({
                   <ChevronLeft className="h-4 w-4" />
                 </button>
 
-                {/* Episode Selector Dropdown Trigger Button (Liquid Glass Style) */}
-                <div className="relative">
-                  <button
-                    onClick={() => setIsEpisodeMenuOpen((prev) => !prev)}
-                    aria-expanded={isEpisodeMenuOpen}
-                    title="Select Season & Episode"
-                    className={`flex items-center gap-1.5 sm:gap-2 rounded-full px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs sm:text-sm font-medium backdrop-blur-xl transition-all shadow-xl border cursor-pointer ${
-                      isEpisodeMenuOpen
-                        ? "bg-[#e50914]/35 text-white border-[#e50914]/70 shadow-[0_0_16px_rgba(229,9,20,0.35)]"
-                        : "bg-white/15 text-white border-white/25 hover:bg-black/85 hover:border-white/15 hover:text-white/95"
-                    }`}
+                {/* Episode Switcher Trigger Button with User's Exact SVG */}
+                <button
+                  onClick={() => {
+                    setModalSeason(currentSeason);
+                    setIsEpisodeModalOpen(true);
+                  }}
+                  title="Seasons & Episodes"
+                  aria-label="Seasons & Episodes"
+                  className={`flex items-center gap-1.5 sm:gap-2 rounded-full px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs sm:text-sm font-medium backdrop-blur-xl transition-all shadow-xl border cursor-pointer ${
+                    isEpisodeModalOpen
+                      ? "bg-[#e50914]/35 text-white border-[#e50914]/70 shadow-[0_0_16px_rgba(229,9,20,0.35)]"
+                      : "bg-white/15 text-white border-white/25 hover:bg-black/85 hover:border-white/15 hover:text-white/95"
+                  }`}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 256 256"
+                    className="h-4 w-4 sm:h-4.5 sm:w-4.5 fill-current shrink-0 text-white"
                   >
-                    <span className="font-semibold whitespace-nowrap">
-                      S{currentSeason} : E{currentEpisode}
-                    </span>
-                    <ChevronDown
-                      className={`h-3.5 w-3.5 transition-transform duration-200 text-zinc-300 ${
-                        isEpisodeMenuOpen ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-
-                  {/* Season & Episode Liquid Glass Dropdown Menu */}
-                  {isEpisodeMenuOpen && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-40 bg-transparent"
-                        onClick={() => setIsEpisodeMenuOpen(false)}
-                      />
-                      <div className="absolute left-0 top-full mt-2.5 z-50 w-72 sm:w-80 rounded-2xl bg-black/65 backdrop-blur-2xl border border-white/20 p-3 shadow-[0_16px_48px_rgba(0,0,0,0.8)] animate-in fade-in zoom-in-95 duration-150">
-                        {/* Header */}
-                        <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/15">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-300">
-                            Select Episode
-                          </span>
-                          <span className="text-xs font-semibold text-zinc-400">
-                            Season {currentSeason} ({maxEpisodes} Eps)
-                          </span>
-                        </div>
-
-                        {/* Season Tabs (if multiple seasons exist) */}
-                        {validSeasons.length > 1 && (
-                          <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-2.5 scrollbar-none">
-                            {validSeasons.map((s) => (
-                              <button
-                                key={s.id || s.season_number}
-                                onClick={() => handleSelectEpisode(s.season_number, 1)}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-medium shrink-0 transition-all cursor-pointer ${
-                                  s.season_number === currentSeason
-                                    ? "bg-red-600 text-white font-bold shadow-md"
-                                    : "bg-white/10 text-zinc-300 hover:bg-white/20 hover:text-white"
-                                }`}
-                              >
-                                Season {s.season_number}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Episodes Grid */}
-                        <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5 max-h-56 overflow-y-auto pr-1">
-                          {Array.from({ length: maxEpisodes }, (_, i) => i + 1).map((epNum) => {
-                            const isCurrent = epNum === currentEpisode;
-                            return (
-                              <button
-                                key={epNum}
-                                onClick={() => handleSelectEpisode(currentSeason, epNum)}
-                                className={`h-9 rounded-lg flex items-center justify-center text-xs font-medium transition-all cursor-pointer ${
-                                  isCurrent
-                                    ? "bg-[#e50914] text-white font-bold shadow-[0_0_12px_rgba(229,9,20,0.5)] scale-105"
-                                    : "bg-white/10 text-zinc-300 hover:bg-white/25 hover:text-white"
-                                }`}
-                              >
-                                E{epNum}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
+                    <path d="M216,40H72A16,16,0,0,0,56,56V72H40A16,16,0,0,0,24,88V200a16,16,0,0,0,16,16H184a16,16,0,0,0,16-16V184h16a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40ZM184,88v16H40V88Zm0,112H40V120H184v80Zm32-32H200V88a16,16,0,0,0-16-16H72V56H216Z" />
+                  </svg>
+                  <span className="font-semibold whitespace-nowrap">
+                    S{currentSeason} : E{currentEpisode}
+                  </span>
+                </button>
 
                 {/* Next Episode Button */}
                 <button
                   onClick={() => {
-                    if (currentEpisode < maxEpisodes) {
+                    const activeSummary =
+                      validSeasons.find((s) => s.season_number === currentSeason) || validSeasons[0];
+                    const maxEp = activeSummary?.episode_count || 30;
+                    if (currentEpisode < maxEp) {
                       handleSelectEpisode(currentSeason, currentEpisode + 1);
                     } else {
                       const nextSeasonIndex =
@@ -646,7 +738,9 @@ export function VideoPlayerView({
                     }
                   }}
                   disabled={
-                    currentEpisode >= maxEpisodes &&
+                    currentEpisode >=
+                      (validSeasons.find((s) => s.season_number === currentSeason)?.episode_count ||
+                        30) &&
                     validSeasons.findIndex((s) => s.season_number === currentSeason) >=
                       validSeasons.length - 1
                   }
@@ -665,7 +759,7 @@ export function VideoPlayerView({
             className={`transition-all duration-500 pointer-events-auto ${
               isFullscreen
                 ? "opacity-0 scale-95 pointer-events-none"
-                : showOverlay || isServerMenuOpen || isEpisodeMenuOpen
+                : showOverlay || isServerMenuOpen || isEpisodeMenuOpen || isEpisodeModalOpen
                 ? "opacity-100 scale-100"
                 : "opacity-25 hover:opacity-100 scale-100"
             }`}
@@ -691,6 +785,257 @@ export function VideoPlayerView({
           </div>
         </div>
       </div>
+
+      {/* 4. Fullscreen Episode & Season Switcher Modal (Overlay) */}
+      {type === "tv" && isEpisodeModalOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-xl animate-in fade-in duration-200 overflow-hidden select-none">
+          {/* Cinematic backdrop behind the modal */}
+          <div className="absolute inset-0 pointer-events-none z-0">
+            <img
+              src={backdropUrl(details.backdrop_path, "original")}
+              alt=""
+              className="h-full w-full object-cover opacity-25 filter blur-[1px]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/85 to-black/60" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-black/90" />
+          </div>
+
+          {/* Top Header Navigation Bar */}
+          <div className="relative z-20 flex items-center justify-between px-4 py-4 sm:px-8 sm:py-6 border-b border-white/10 bg-black/40 backdrop-blur-md">
+            {/* Top Left: Back Arrow */}
+            <button
+              onClick={() => setIsEpisodeModalOpen(false)}
+              aria-label="Back to video"
+              title="Back to video (Esc)"
+              className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer active:scale-95 border border-white/15 shadow-md"
+            >
+              <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
+            </button>
+
+            {/* Top Right: Season Dropdown, Search Input, Autoplay Next, Close */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Season Selector Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsSeasonDropdownOpen((prev) => !prev)}
+                  aria-expanded={isSeasonDropdownOpen}
+                  className="flex items-center gap-1.5 sm:gap-2 bg-[#2d0e12] hover:bg-[#3f1319] border border-[#e50914]/50 text-[#ff4c53] font-semibold text-xs sm:text-sm px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl transition-all cursor-pointer shadow-lg active:scale-95"
+                >
+                  <span>Season {modalSeason}</span>
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                      isSeasonDropdownOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {isSeasonDropdownOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-30 bg-transparent"
+                      onClick={() => setIsSeasonDropdownOpen(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-2 z-40 w-44 rounded-2xl bg-black/90 backdrop-blur-2xl border border-white/15 p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.85)] animate-in fade-in zoom-in-95 duration-150">
+                      {validSeasons.map((s) => {
+                        const isSelected = s.season_number === modalSeason;
+                        return (
+                          <button
+                            key={s.id || s.season_number}
+                            onClick={() => {
+                              setModalSeason(s.season_number);
+                              setIsSeasonDropdownOpen(false);
+                            }}
+                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-all cursor-pointer ${
+                              isSelected
+                                ? "bg-[#e50914]/25 text-white"
+                                : "text-zinc-200 hover:bg-white/10 hover:text-white"
+                            }`}
+                          >
+                            <span>{s.name || `Season ${s.season_number}`}</span>
+                            {isSelected && <Check className="h-3.5 w-3.5 text-[#e50914]" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Search Input */}
+              <div className="relative flex items-center bg-black/60 backdrop-blur-md border border-white/15 rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs text-white focus-within:border-white/40 focus-within:bg-black/80 transition-all w-28 sm:w-44">
+                <Search className="h-3.5 w-3.5 text-zinc-400 shrink-0 mr-1.5" />
+                <input
+                  type="text"
+                  placeholder="Search"
+                  value={episodeSearchQuery}
+                  onChange={(e) => setEpisodeSearchQuery(e.target.value)}
+                  className="bg-transparent text-white placeholder-zinc-500 text-xs outline-none w-full"
+                />
+                {episodeSearchQuery && (
+                  <button
+                    onClick={() => setEpisodeSearchQuery("")}
+                    className="text-zinc-400 hover:text-white ml-1 cursor-pointer"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Autoplay Next Toggle */}
+              <button
+                onClick={toggleAutoplayNext}
+                title={autoplayNext ? "Autoplay Next: Enabled" : "Autoplay Next: Disabled"}
+                aria-label="Toggle autoplay next"
+                className="flex items-center gap-1.5 sm:gap-2 bg-black/60 backdrop-blur-md border border-white/15 hover:border-white/30 rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 transition-all cursor-pointer"
+              >
+                <SkipForward className="h-3.5 w-3.5 text-zinc-300" />
+                <div
+                  className={`w-7 sm:w-8 h-4 rounded-full p-0.5 transition-colors duration-200 ${
+                    autoplayNext ? "bg-white" : "bg-zinc-700"
+                  }`}
+                >
+                  <div
+                    className={`w-3 h-3 rounded-full transition-transform duration-200 ${
+                      autoplayNext ? "translate-x-3 sm:translate-x-4 bg-black" : "translate-x-0 bg-white"
+                    }`}
+                  />
+                </div>
+              </button>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setIsEpisodeModalOpen(false)}
+                title="Close (Esc)"
+                aria-label="Close"
+                className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-black/60 hover:bg-black/90 text-zinc-300 hover:text-white border border-white/15 hover:border-white/30 transition-all cursor-pointer active:scale-95"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Main Content Area */}
+          <div className="relative z-10 flex-1 min-h-0 flex flex-col md:flex-row p-4 sm:p-8 lg:p-12 gap-8 items-start md:items-end justify-between overflow-y-auto md:overflow-hidden">
+            {/* Left Details Panel */}
+            <div className="w-full md:max-w-md lg:max-w-xl pb-4 md:pb-6 flex flex-col justify-end">
+              {logoFile ? (
+                <img
+                  src={logoUrl(logoFile, "w500")}
+                  alt={details.name || details.title}
+                  className="max-h-20 sm:max-h-28 md:max-h-36 max-w-[240px] sm:max-w-md w-auto object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] mb-4"
+                />
+              ) : (
+                <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)] mb-3">
+                  {details.name || details.title}
+                </h1>
+              )}
+
+              <p className="text-xs sm:text-sm text-zinc-300 font-medium mb-1.5 drop-shadow">
+                Season {modalSeason} · Episode {currentEpisodeObj.episode_number} ·{" "}
+                {formatRuntime(currentEpisodeObj.runtime)}
+              </p>
+
+              <h2 className="text-base sm:text-xl md:text-2xl font-bold text-white mb-2 drop-shadow-sm line-clamp-2">
+                {currentEpisodeObj.name || `Episode ${currentEpisodeObj.episode_number}`}
+              </h2>
+
+              <p className="text-xs sm:text-sm text-zinc-300/85 leading-relaxed max-w-xl line-clamp-3 sm:line-clamp-4 drop-shadow">
+                {currentEpisodeObj.overview || details.overview || "No episode description available."}
+              </p>
+            </div>
+
+            {/* Right Episodes Scrollable Column */}
+            <div className="w-full md:w-[400px] lg:w-[460px] shrink-0 flex flex-col max-h-[60vh] md:max-h-[calc(100vh-160px)]">
+              <div className="overflow-y-auto pr-2 space-y-3.5 custom-scrollbar">
+                {isLoadingSeason ? (
+                  <div className="flex flex-col items-center justify-center py-16 space-y-3 text-zinc-400">
+                    <div className="h-8 w-8 rounded-full border-2 border-t-red-600 border-r-transparent border-b-white/20 border-l-transparent animate-spin" />
+                    <p className="text-xs font-medium">Loading episodes for Season {modalSeason}...</p>
+                  </div>
+                ) : episodesToDisplay.length === 0 ? (
+                  <div className="p-8 text-center text-zinc-400 text-xs bg-white/5 rounded-2xl border border-white/10">
+                    No episodes found matching "{episodeSearchQuery}"
+                  </div>
+                ) : (
+                  episodesToDisplay.map((ep) => {
+                    const isActive =
+                      modalSeason === currentSeason && ep.episode_number === currentEpisode;
+                    return (
+                      <div
+                        key={ep.id || ep.episode_number}
+                        ref={isActive ? activeCardRef : undefined}
+                        onClick={() => handleSelectEpisode(modalSeason, ep.episode_number)}
+                        className={`group relative w-full rounded-2xl overflow-hidden cursor-pointer transition-all duration-200 select-none ${
+                          isActive
+                            ? "border-2 border-white shadow-[0_8px_32px_rgba(0,0,0,0.8)] ring-1 ring-white/30"
+                            : "border border-white/10 hover:border-white/30 bg-zinc-950/60 hover:bg-zinc-900/80 hover:scale-[1.01]"
+                        }`}
+                      >
+                        {/* Episode Still Background */}
+                        <div className="absolute inset-0 z-0">
+                          <img
+                            src={stillUrl(ep.still_path || details.backdrop_path, "w500")}
+                            alt={ep.name}
+                            className={`h-full w-full object-cover transition-opacity duration-300 ${
+                              isActive ? "opacity-60" : "opacity-35 group-hover:opacity-50"
+                            }`}
+                            loading="lazy"
+                          />
+                          <div
+                            className={`absolute inset-0 ${
+                              isActive
+                                ? "bg-gradient-to-t from-black via-black/80 to-black/30"
+                                : "bg-gradient-to-t from-black via-black/85 to-black/50"
+                            }`}
+                          />
+                        </div>
+
+                        {/* Card Content */}
+                        <div className="relative z-10 p-4 sm:p-5 flex flex-col justify-end min-h-[120px] sm:min-h-[140px]">
+                          {isActive ? (
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="bg-[#e50914] text-white text-[10px] font-black px-2 py-0.5 rounded tracking-wider uppercase inline-block shadow-sm">
+                                  WATCHING
+                                </span>
+                                <h3 className="text-white font-extrabold text-base sm:text-lg leading-snug line-clamp-1 drop-shadow-sm">
+                                  {ep.episode_number}. {ep.name}
+                                </h3>
+                              </div>
+                              <p className="text-xs text-zinc-300 font-medium">
+                                {ep.runtime ? `${ep.runtime}m left` : "42m left"}
+                              </p>
+                              {ep.overview && (
+                                <p className="text-xs text-zinc-300/85 line-clamp-2 leading-relaxed pt-0.5">
+                                  {ep.overview}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <h3 className="text-zinc-100 font-bold text-sm sm:text-base group-hover:text-white line-clamp-1 drop-shadow-sm">
+                                  {ep.episode_number}. {ep.name}
+                                </h3>
+                                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center h-7 w-7 rounded-full bg-white/20 backdrop-blur-sm text-white shrink-0 ml-2">
+                                  <Play className="h-3.5 w-3.5 fill-white" />
+                                </div>
+                              </div>
+                              <p className="text-xs text-zinc-400 font-medium">
+                                {ep.runtime ? `${ep.runtime}m left` : "42m left"}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -111,7 +111,7 @@ export function PersonDetailView({ person }: PersonDetailViewProps) {
         <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#e50914]/10 rounded-full blur-[140px] pointer-events-none" />
 
         {/* Hero Actor Profile Section */}
-        <div className="mx-auto max-w-[1360px] px-4 sm:px-6 md:px-10 pt-28 sm:pt-36 md:pt-40 lg:pt-44 pb-10">
+        <div className="mx-auto max-w-[1360px] px-4 sm:px-6 md:px-10 pt-[68px] sm:pt-[70px] md:pt-[72px] lg:pt-[74px] pb-6">
           <div className="flex flex-col md:flex-row gap-8 lg:gap-12 items-start">
             {/* Profile Avatar Card */}
             <div className="flex-shrink-0 w-48 sm:w-52 md:w-56 lg:w-64 mx-auto md:mx-0">
